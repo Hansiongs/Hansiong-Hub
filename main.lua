@@ -487,18 +487,6 @@ LowSetting()
 GetRods()
 GetBaits()
 
-local function disable(gui)
-    if gui:IsA("ScreenGui") then
-        local name = gui.Name:lower()
-        if name:find("small notification") or name:find("cutscene") then
-            gui.Enabled = false
-            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-                if gui.Enabled then gui.Enabled = false end
-            end)
-        end
-    end
-end
-
 for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
 PlayerGui.ChildAdded:Connect(disable)
 
