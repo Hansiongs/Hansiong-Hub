@@ -505,7 +505,7 @@ while Temporary["Running"] do
     end
 
     if Settings["AutoFish"] then
-        if Temporary["FishCatch"] > Settings["SellCount"] then
+        if Temporary["FishCatch"] > Settings["SellCount"] or (Temporary["FishingCatch"] % 50 == 0) then
             Temporary["FishCatch"] = 0
             SellAllItems()
             task.wait(0.2)
