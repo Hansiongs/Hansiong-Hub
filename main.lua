@@ -487,9 +487,6 @@ LowSetting()
 GetRods()
 GetBaits()
 
-for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
-PlayerGui.ChildAdded:Connect(disable)
-
 while Temporary["Running"] do
     if Settings["Render"] ~= Temporary["Render"] then
         Set3dRenderingEnabled(Settings["Render"])
