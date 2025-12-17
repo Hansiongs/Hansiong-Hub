@@ -1,397 +1,201 @@
+-- [[ HANSEN HYBRID V2: INDEPENDENT CONFIG PER MODE ]] --
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- [[ 1. SAFE LOAD SYSTEM (WAJIB) ]] --
--- Kita load folder Packages dulu dengan aman
-local Packages = ReplicatedStorage:WaitForChild("Packages")
+-- [[ 1. KONFIGURASI TERPISAH ]]
+local Settings = {
+    -- Konfigurasi untuk FAST MODE (Rod ID 257 / Element / Aurora)
+    FAST = {
+        RodID = 257,           -- ID Rod pemicu mode Fast
+        StartDelay = 1.2,     -- Mulai sangat cepat
+        AddStep = 0.05,        -- Nambah dikit-dikit biar presisi
+        FailThreshold = 2,     -- Gagal 2x baru nambah
+        SuccessThreshold = 3,  -- Sukses 3x baru Lock
+    },
+    
+    -- Konfigurasi untuk NORMAL MODE (Rod Biasa / Fivola / King / dll)
+    NORMAL = {
+        StartDelay = 0.6,      -- Mulai dari angka aman
+        AddStep = 0.1,         -- Nambah wajar
+        FailThreshold = 2,     -- Gagal 2x baru nambah
+        SuccessThreshold = 3,  -- Sukses 3x baru Lock
+    }
+}
 
--- A. Cari Network Folder (sleitnick_net)
-local Index = Packages:WaitForChild("_Index")
-local Net = nil
-for _, folder in pairs(Index:GetChildren()) do
+-- [[ 2. VARIABEL STATE ]]
+local CurrentMode = "None"     -- "FAST" atau "NORMAL"
+local CurrentDelay = 1.0
+local ActiveStep = 0.1
+local ActiveFailThresh = 2
+local ActiveSuccessThresh = 3
+
+local IsLocked = false
+local FishReceived = false
+local FailStreak = 0
+local SuccessStreak = 0
+
+-- [[ 3. SETUP DATA & REMOTE ]]
+local Packages = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index")
+local Replion = require(ReplicatedStorage.Packages.Replion)
+local NetFolder = nil
+
+-- Auto Detect Network Folder
+for _, folder in pairs(Packages:GetChildren()) do
     if folder.Name:match("sleitnick_net") then
-        Net = folder:WaitForChild("net")
+        NetFolder = folder
         break
     end
 end
-if not Net then return warn("❌ CRITICAL: Folder Network (sleitnick_net) tidak ketemu!") end
 
--- B. Cari Replion (Data Player) - FIX ERROR DISINI
-local ReplionModule = Packages:WaitForChild("Replion")
-local DataReplion = require(ReplionModule).Client:WaitReplion("Data") 
--- ^ Variabel ini sekarang bernama 'DataReplion' agar fungsi di bawah bisa membacanya.
-
--- [[ 2. VARIABLES & CONFIG ]] --
-local Owned = { ["Rods"] = {}, ["Baits"] = {}, ["Items"] = {} }
-local Temporary = {
-    ["Running"] = true,
-    ["FishCatch"] = 99999,
-    ["FishingCatch"] = 0,
-    ["BestRod"] = nil,
-    ["BestRodId"] = nil,
-    ["BestBait"] = nil,
-    ["Location"] = nil,
-    ["ScreenGui"] = nil,
-    ["Render"] = nil,
-    ["Timex"] = tick(),
-    ["AFK"] = tick(),
-}
-
-local HCfg = {
-    FAST = {Id = 257, S = 1.2, Add = 0.05, F = 2, W = 3},
-    NORM = {S = 0.6, Add = 0.1, F = 2, W = 3}
-}
-local HState = {Mode = "NORM", D = 1.0, Lock = false, SStr = 0, FStr = 0, Got = false}
-
--- [[ 3. LOAD DATABASE ONLINE ]] --
-local DBFish = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/fish_list'))
-local DBRod = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/rod_list'))
-local DBBait = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/bait_list'))
-
-local Locations = {
-    ["Sisyphus Statue"] = CFrame.new(-3729.25,-130.07,-885.64),
-    ["Esoteric Depths"] = CFrame.new(3253.03,-1288.65,1433.85),
-    ["Treasure Room"] = CFrame.new(-3581.60,-274.07,-1589.65),
-    ["Underground Cellar"] = CFrame.new(2135.45,-86.20,-699.33),
-    ["Sacred Temple"] = CFrame.new(1451.41,-17.13,-635.65),
-    ["Kohana Volcano"] = CFrame.new(-551.98,23.55,182.16),
-    ["Hourglass Diamond Artifact"] = CFrame.new(1487.58, 3.78,-843.49) * CFrame.Angles(0, math.rad(180), 0),
-    ["Crescent Artifact"] = CFrame.new(1400.68, 3.34, 121.89) * CFrame.Angles(0, math.rad(180), 0),
-    ["Diamond Artifact"] = CFrame.new(1837.77, 5.29, -299.71) * CFrame.Angles(0, math.rad(270), 0),
-    ["Arrow Artifact"] = CFrame.new(879.46, 4.29, -334.11) * CFrame.Angles(0, math.rad(90), 0),
-    ["Ancient Ruin"] = CFrame.new(6061.00, -585.92, 4715.38),
-    ["Crater Island"] = CFrame.new(998.03, 2.86, 5151.16),
-    ["Double Enchant Altar"] = CFrame.new(1480.07, 127.62, -589.82),
-    ["Enchant Altar"] = CFrame.new(3255.68, -1301.53, 1371.82),
-    ["Tropical Island"] = CFrame.new(-2152.61, 2.32, 3671.71),
-    ["Coral Reefs"] = CFrame.new(-3181.38, 2.52, 2104.35),
-    ["Ancient Jungle"] = CFrame.new(1275.10, 9, -334.75),
-    ["Kohana"] = CFrame.new(-661.67, 3.04, 714.14),
-    ["Christmast Island"] = CFrame.new(1137.03, 28, 1559.69),
-    ["Iron Cavern"] = CFrame.new(-8800.58, -580, 241.26),
-}
-
-local WeathersData = {
-    ["Wind"] = 10000, ["Snow"] = 15000, ["Cloudy"] = 20000,
-    ["Storm"] = 35000, ["Radiant"] = 50000, ["Shark Hunt"] = 300000,
-}
-
--- [[ 4. FUNCTIONS ]] --
-function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
-function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
-function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
-function RequestFishingMinigameStarted() return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), workspace:GetServerTimeNow()) end
-function FishingCompleted() return Net["RE/FishingCompleted"]:FireServer() end
-function UpdateAutoFishingState(status) return Net["RF/UpdateAutoFishingState"]:InvokeServer(status) end
-function CancelFishingInputs() return Net["RF/CancelFishingInputs"]:InvokeServer() end
-function SellAllItems() return Net["RF/SellAllItems"]:InvokeServer() end
-function FavoriteItem(Uid) return Net["RE/FavoriteItem"]:FireServer(Uid) end
-function EquipItem(Uid, Item) return Net["RE/EquipItem"]:FireServer(Uid, Item) end
-function PurchaseFishingRod(Id) return Net["RF/PurchaseFishingRod"]:InvokeServer(Id) end
-function PurchaseBait(Id) return Net["RF/PurchaseBait"]:InvokeServer(Id) end
-function EquipBait(Id) return Net["RE/EquipBait"]:FireServer(Id) end
-function PlaceLeverItem(item) return Net["RE/PlaceLeverItem"]:FireServer(item) end
-function PurchaseWeatherEvent(name) return Net["RF/PurchaseWeatherEvent"]:InvokeServer(name) end
-
-function GetCoin() return DataReplion:Get("Coins") end
-function GetCaught() return Player.leaderstats.Caught.Value end
-function GetLevel() return DataReplion:Get("Level") end
-function GetXP() return DataReplion:Get("XP") end
-function GetLocation() return Player.PlayerGui.Events.Frame.Location.Label.Text end
-function GetTempleLevers() return DataReplion:Get("TempleLevers") end
-function UnlockedTemple() return DataReplion:Get("UnlockedTemple") end
-function GetEquippedUid() return DataReplion:Get("EquippedId") end
-function GetEquippedType() return DataReplion:Get("EquippedType") end
-function GetEquippedBaitId() return DataReplion:Get("EquippedBaitId") end
-function GetWeather(name) return Player.PlayerGui.Events.Frame.Events[name].Visible end
-
-function Teleport(location)
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        Character.HumanoidRootPart.CFrame = location
-    end
+if not NetFolder then 
+    return warn("❌ Script Berhenti: Folder Network tidak ditemukan!") 
 end
 
-function CheckProgress(progressText)
-    if not progressText then return false end
-    local cleanText = string.gsub(progressText, ",", "")
-    local current, required = string.match(cleanText, "(%d+)%s*/%s*(%d+)")
-    if current and required then return tonumber(current) >= tonumber(required) end
-    if string.find(cleanText, "100%%") then return true end
-    return false
-end
+local Net = NetFolder:WaitForChild("net")
+local RF_Cancel = Net:WaitForChild("RF/CancelFishingInputs")
+local RF_Charge = Net:WaitForChild("RF/ChargeFishingRod")
+local RF_Start  = Net:WaitForChild("RF/RequestFishingMinigameStarted")
+local RE_Finish = Net:WaitForChild("RE/FishingCompleted")
+local RE_Caught = Net:WaitForChild("RE/ObtainedNewFishNotification")
 
-function GetDeepSeaQuest()
-    local pGui = Player:FindFirstChild("PlayerGui")
-    local questList = pGui and pGui:FindFirstChild("Quest") and pGui.Quest:FindFirstChild("List") and pGui.Quest.List:FindFirstChild("Inside")
-    local results = {"1/1", "1/1", "1/1", "1/1"}
-    if questList then
-        for _, q in ipairs(questList:GetChildren()) do
-            if q:FindFirstChild("Content") then
-                local obj1 = q.Content:FindFirstChild("Objective1")
-                if obj1 and obj1:FindFirstChild("Prefix", true) and string.find(obj1:FindFirstChild("Prefix", true).Text, "300") then
-                    for i = 1, 4 do
-                        local progObj = q.Content:FindFirstChild("Objective" .. i):FindFirstChild("Progress", true)
-                        results[i] = progObj and progObj.Text or "1/1"
-                    end
-                    break
+-- [[ 4. FUNGSI CEK ROD ]]
+local function CheckFishingMode()
+    local Data = Replion.Client:GetReplion("Data")
+    if not Data then return "NORMAL" end 
+    
+    local EquippedUUID = Data:Get("EquippedId")
+    local InventoryRods = Data:Get({"Inventory", "Fishing Rods"})
+    
+    if EquippedUUID and InventoryRods then
+        for _, rod in pairs(InventoryRods) do
+            if rod.UUID == EquippedUUID then
+                if rod.Id == Settings.FAST.RodID then
+                    return "FAST"
+                else
+                    return "NORMAL"
                 end
             end
         end
     end
-    return results
+    return "NORMAL"
 end
 
-function GetJungle2025Quest()
-    local pGui = Player:FindFirstChild("PlayerGui")
-    local questList = pGui and pGui:FindFirstChild("Quest") and pGui.Quest:FindFirstChild("List") and pGui.Quest.List:FindFirstChild("Inside")
-    local results = {"1/1", "1/1", "1/1", "1/1"}
-    if questList then
-        for _, q in ipairs(questList:GetChildren()) do
-            if q:FindFirstChild("Content") then
-                local isTarget = false
-                for _, txt in ipairs(q.Content:GetDescendants()) do
-                    if txt:IsA("TextLabel") and (string.find(txt.Text, "Create 3") or string.find(txt.Text, "Element")) then
-                        isTarget = true; break
-                    end
-                end
-                if isTarget then
-                    for i = 1, 4 do
-                        local objFrame = q.Content:FindFirstChild("Objective" .. i)
-                        local progObj = objFrame and objFrame:FindFirstChild("Progress", true)
-                        results[i] = progObj and progObj.Text or "1/1"
-                    end
-                    break
-                end
-            end
-        end
-    end
-    return results
-end
-
-function GetItems()
-    local items = DataReplion:Get({"Inventory", "Items"})
-    for _, item in ipairs(items) do Owned["Items"][item.Id] = true end
-end
-
-function GetEquippedRodId()
-    local Uid = DataReplion:Get("EquippedId")
-    local items = DataReplion:Get({"Inventory", "Fishing Rods"})
-    for _, item in ipairs(items) do if item.UUID == Uid then return item.Id end end
-end
-
-function GetBaits()
-    local items = DataReplion:Get({"Inventory", "Baits"})
-    local Baits, Luck = {}, {}
-    for _, item in ipairs(items) do
-        if DBBait[tostring(item.Id)] then
-            Owned["Baits"][item.Id] = item.UUID
-            Baits[DBBait[tostring(item.Id)].BaseLuck] = item.Id
-            table.insert(Luck, DBBait[tostring(item.Id)].BaseLuck)
-        end
-    end
-    if #Luck > 0 then Temporary["BestBait"] = Baits[math.max(table.unpack(Luck))] end
-end
-
-function GetRods()
-    local items = DataReplion:Get({"Inventory", "Fishing Rods"})
-    local Rods, RodsId, Luck = {}, {}, {}
-    for _, item in ipairs(items) do
-        if DBRod[tostring(item.Id)] and DBRod[tostring(item.Id)].BaseLuck then
-            Owned["Rods"][item.Id] = item.UUID
-            RodsId[item.UUID] = item.Id
-            Rods[DBRod[tostring(item.Id)].BaseLuck] = item.UUID
-            table.insert(Luck, DBRod[tostring(item.Id)].BaseLuck)
-        end
-    end
-    if #Luck > 0 then
-        Temporary["BestRod"] = Rods[math.max(table.unpack(Luck))]
-        Temporary["BestRodId"] = RodsId[Temporary["BestRod"]]
-    end
-end
-
-function Set3dRenderingEnabled(status)
-    RunService:Set3dRenderingEnabled(status)
-    if not status and not Temporary["ScreenGui"] then
-        Temporary["ScreenGui"] = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
-        Temporary["ScreenGui"].Name = "BigTextGui"
-        Temporary["ScreenGui"].DisplayOrder = 999
-        local label = Instance.new("TextLabel", Temporary["ScreenGui"])
-        label.Size = UDim2.new(0.8, 0, 0.3, 0)
-        label.Position = UDim2.new(0.1, 0, 0.35, 0)
-        label.BackgroundTransparency = 1
-        label.Text = tostring(Player)
-        label.TextScaled = true
-    end
-    if status and Temporary["ScreenGui"] then Temporary["ScreenGui"]:Destroy(); Temporary["ScreenGui"] = nil end
-    Temporary["Render"] = status
-end
-
-function contains(tbl, val)
-    for _, v in ipairs(tbl) do if v == val then return true end end
-    return false
-end
-
-function CheckConnection()
-	local ok, res = pcall(function()
-		return HttpService:RequestAsync({Url = "https://hrplay.cloud/api", Method = "GET", Headers = {["Cache-Control"] = "no-cache"}})
-	end)
-	return ok and res and res.Success == true and res.StatusCode >= 200 and res.StatusCode < 500
-end
-
-function Reconnect() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, Player) end
-
-function LowSetting()
-    local Lighting = game:GetService("Lighting")
-    local Terrain = workspace:WaitForChild("Terrain")
-    Terrain.WaterWaveSize = 0; Terrain.WaterWaveSpeed = 0; Terrain.WaterReflectance = 0; Terrain.WaterTransparency = 0
-    Lighting.GlobalShadows = false; Lighting.FogEnd = 9e9; Lighting.Brightness = 0
-    pcall(function() settings().Rendering.QualityLevel = "Level01" end)
-end
-
-Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
-    HState.Got = true; HState.FStr = 0
-    if not HState.Lock then
-        HState.SStr = HState.SStr + 1
-        if HState.SStr >= HCfg[HState.Mode].W then
-            HState.Lock = true
-            local m = (HState.Mode == "FAST") and 0.02 or 0.05
-            HState.D = math.floor((HState.D + m) * 1000) / 1000
-        end
-    end
-
-    Temporary["FishCatch"] = Temporary["FishCatch"] + 1
-    Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
-    local fishInfo = DBFish[tostring(msg1)]
-    if fishInfo then
-        if fishInfo.Tier == 7 or Settings["FavoriteFish"][tostring(msg1)] then
-            FavoriteItem(msg3.InventoryItem.UUID)
-        end
-    end
-end)
-
-game:GetService("GuiService").ErrorMessageChanged:Connect(function()
-	while Settings["AutoReconnect"] do
-		if CheckConnection() then Reconnect(); break else task.wait(1) end
-	end
-end)
-
-RunService.Heartbeat:Connect(function()
-    local ts = tick()
-    if ts - Temporary["AFK"] > 600 then
-        Temporary["AFK"] = tick()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end
-end)
-
-local function disable(gui)
-    if gui:IsA("ScreenGui") then
-        local name = gui.Name:lower()
-        if name:find("small notification") or name:find("cutscene") then
-            gui.Enabled = false
-            gui:GetPropertyChangedSignal("Enabled"):Connect(function() if gui.Enabled then gui.Enabled = false end end)
-        end
-    end
-end
-for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
-PlayerGui.ChildAdded:Connect(disable)
-
-LowSetting()
-GetRods()
-GetBaits()
-
-while Temporary["Running"] do
-    if Settings["Render"] ~= Temporary["Render"] then Set3dRenderingEnabled(Settings["Render"]) end
-
-    if Settings["AutoFish"] then
-        if Temporary["FishCatch"] > Settings["SellCount"] then
-            Temporary["FishCatch"] = 0
-            SellAllItems(); task.wait(0.2)
-            
-            if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
-            
-            for _, val in pairs(Settings["BuyRods"]) do
-                if DBRod[tostring(val)] and not Owned["Rods"][DBRod[tostring(val)].Id] and GetCoin() > DBRod[tostring(val)].Price then
-                    PurchaseFishingRod(DBRod[tostring(val)].Id); task.wait(0.2)
-                end
-            end
-            for _, val in pairs(Settings["BuyBaits"]) do
-                if DBBait[tostring(val)] and not Owned["Baits"][DBBait[tostring(val)].Id] and GetCoin() > DBBait[tostring(val)].Price then
-                    PurchaseBait(DBBait[tostring(val)].Id); task.wait(0.2)
-                end
-            end
-            
-            GetRods(); GetBaits()
-
-            if not Settings["Rod"] and GetEquippedUid() ~= Temporary["BestRod"] then
-                EquipItem(Temporary["BestRod"], "Fishing Rods"); task.wait(0.2)
-            elseif Settings["Rod"] and DBRod[Settings["Rod"]] and Owned["Rods"][DBRod[Settings["Rod"]].Id] and GetEquippedUid() ~= Owned["Rods"][DBRod[Settings["Rod"]].Id] then
-                EquipItem(Owned["Rods"][DBRod[Settings["Rod"]].Id], "Fishing Rods"); task.wait(0.2)
-            end
-            if not Settings["Bait"] and GetEquippedBaitId() ~= Temporary["BestBait"] then
-                EquipBait(Temporary["BestBait"]); task.wait(0.2)
-            end
-
-            if next(Settings["Quest"]) then
-                if not contains(Settings["Quest"], "DeepSea") and not contains(Settings["Quest"], "Jungle2025") and not Settings["Location"] then
-                    Settings["Location"] = "Crater Island"
-                end
-            elseif not Settings["Location"] then
-                Settings["Location"] = "Crater Island"
-            end
-
-            if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
-                Teleport(Locations[Settings["Location"]])
-                Temporary["Location"] = Settings["Location"]
-                task.wait(5)
-            end
-        end
-
-        local TMode = (Temporary["BestRodId"] == HCfg.FAST.Id) and "FAST" or "NORM"
-        if TMode ~= HState.Mode then
-            HState.Mode = TMode; HState.D = HCfg[TMode].S; HState.Lock = false; HState.SStr = 0; HState.FStr = 0
-        end
-
-        HState.Got = false
+-- [[ 5. LISTENER (Handler Hadiah) ]]
+RE_Caught.OnClientEvent:Connect(function()
+    FishReceived = true
+    FailStreak = 0 
+    
+    if not IsLocked then
+        SuccessStreak = SuccessStreak + 1
+        print("✅ ["..CurrentMode.."] Streak: " .. SuccessStreak .. "/" .. ActiveSuccessThresh .. " (Speed: " .. CurrentDelay .. "s)")
         
-        if HState.Mode == "FAST" then
-            task.spawn(function()
-                pcall(function()
-                    CancelFishingInputs()
-                    task.wait(0.1)
-                    ChargeFishingRod()
-                    RequestFishingMinigameStarted()
-                end)
-            end)
-        else
-            pcall(function() CancelFishingInputs() end)
-            if pcall(function() ChargeFishingRod() end) then
-                task.wait(0.1)
-                pcall(function() RequestFishingMinigameStarted() end)
-            else continue end
+        if SuccessStreak >= ActiveSuccessThresh then
+            IsLocked = true
+            -- Margin tipis untuk Fast, agak tebal untuk Normal
+            local margin = (CurrentMode == "FAST") and 0.02 or 0.05
+            local FinalDelay = math.floor((CurrentDelay + margin) * 1000)/1000
+            print("💎 ["..CurrentMode.."] DELAY LOCKED: " .. FinalDelay .. "s")
+            CurrentDelay = FinalDelay
         end
+    end
+end)
 
-        task.wait(HState.D)
-        FishingCompleted()
-        task.wait(0.4)
+print("🎣 HYBRID V2 AKTIF: Menunggu Rod...")
 
-        if not HState.Lock and not HState.Got then
-            if HState.SStr > 0 then HState.SStr = 0 end
-            HState.FStr = HState.FStr + 1
-            if HState.FStr >= HCfg[HState.Mode].F then
-                HState.D = HState.D + HCfg[HState.Mode].Add
-                HState.FStr = 0
+-- [[ 6. LOOP UTAMA ]]
+while true do
+    FishReceived = false
+    local timex = workspace:GetServerTimeNow()
+    
+    -- A. DETEKSI MODE & LOAD CONFIG
+    local DetectedMode = CheckFishingMode()
+    
+    if DetectedMode ~= CurrentMode then
+        print("🔄 Switching Config: " .. CurrentMode .. " -> " .. DetectedMode)
+        CurrentMode = DetectedMode
+        
+        -- Load Config dari Tabel di atas
+        local Cfg = Settings[CurrentMode]
+        CurrentDelay = Cfg.StartDelay
+        ActiveStep = Cfg.AddStep
+        ActiveFailThresh = Cfg.FailThreshold
+        ActiveSuccessThresh = Cfg.SuccessThreshold
+        
+        -- Reset Calibration Counter
+        IsLocked = false
+        FailStreak = 0
+        SuccessStreak = 0
+        
+        print("⚙️ Loaded " .. CurrentMode .. " Settings: Start="..CurrentDelay.."s | Step="..ActiveStep.."s")
+        task.wait(0.2)
+    end
+
+    -- B. EKSEKUSI MANCING
+    if CurrentMode == "FAST" then
+        -- [[ LOGIKA FAST (FIRE & FORGET) ]]
+        task.spawn(function()
+            pcall(function()
+                RF_Cancel:InvokeServer()
+                task.wait(0.1) -- Jeda wajib 257
+                RF_Charge:InvokeServer(timex)
+                RF_Start:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
+            end)
+        end)
+    else
+        -- [[ LOGIKA NORMAL (WAIT RESPONSE) ]]
+        pcall(function() RF_Cancel:InvokeServer() end)
+        
+        local chargeSuccess = pcall(function() RF_Charge:InvokeServer(timex) end)
+        if not chargeSuccess then
+            warn("⚠️ Charge Gagal (Normal Mode), Retrying...")
+            task.wait(0.5)
+            continue
+        end
+        
+        task.wait(0.1)
+        
+        local startSuccess = pcall(function()
+            RF_Start:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
+        end)
+        if not startSuccess then
+            warn("⚠️ Start Gagal (Normal Mode), Retrying...")
+            task.wait(0.5)
+            continue
+        end
+    end
+
+    -- C. TUNGGU HASIL KALIBRASI
+    task.wait(CurrentDelay)
+
+    -- D. FINISH
+    pcall(function()
+        RE_Finish:FireServer()
+    end)
+    
+    -- E. JEDA VALIDASI
+    task.wait(0.4) 
+
+    -- F. LOGIKA KALIBRASI (DINAMIS SESUAI CONFIG)
+    if not IsLocked then
+        if FishReceived then
+            -- Handled by Listener
+        else
+            if SuccessStreak > 0 then
+                warn("⚠️ Streak Putus! Reset ke 0.")
+                SuccessStreak = 0 
+            end
+
+            FailStreak = FailStreak + 1
+            if FailStreak >= ActiveFailThresh then
+                CurrentDelay = CurrentDelay + ActiveStep
+                FailStreak = 0 
+                warn("❌ ["..CurrentMode.."] Gagal "..ActiveFailThresh.."x. Nambah Delay -> " .. math.floor(CurrentDelay*1000)/1000 .. "s")
+            else
+                warn("⚠️ ["..CurrentMode.."] Gagal ke-"..FailStreak.." (Retrying...)")
             end
         end
-    else
-        Temporary["FishCatch"] = 99999
-        task.wait(0.5)
     end
 end
