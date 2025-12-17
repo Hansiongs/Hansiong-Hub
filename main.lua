@@ -666,27 +666,30 @@ while Temporary["Running"] do
                 end)
             end)
         else
+            
             pcall(function() Net["RF/CancelFishingInputs"]:InvokeServer() end)
-        
-            local chargeSuccess = pcall(function() 
-                Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
-            end)
+            local chargeSuccess = pcall(function() Net["RF/ChargeFishingRod"]:InvokeServer(timex) end)
 
             if chargeSuccess then
                 task.wait(0.1)
-                local startSuccess = pcall(function() 
-                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
-                end)
-                
-                if not startSuccess then
-                    task.wait(0.5)
-                    continue
+                local waited = 0
+                repeat 
+                    task.wait(0.1)
+                    waited = waited + 0.1
+                until (game.Players.LocalPlayer.PlayerGui:FindFirstChild("shakeui") and game.Players.LocalPlayer.PlayerGui.shakeui.Enabled) or waited > 20 or not Temporary["Running"]
+
+                if game.Players.LocalPlayer.PlayerGui:FindFirstChild("shakeui") then
+                    pcall(function() 
+                        Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
+                    end)
+                else
+                    continue 
                 end
             else
                 task.wait(0.5)
                 continue
             end
-        end
+    end
 
         task.wait(HState.D)
         FishingCompleted()
