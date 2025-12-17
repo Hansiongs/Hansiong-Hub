@@ -648,60 +648,6 @@ while Temporary["Running"] do
                 end)
             task.wait(2)
 
-        elseif Settings["FishingMode"] == "VirtualFishing" then
-            CancelFishingInputs()
-            FishingController.RequestChargeFishingRod(VirtualFishingData, Vector2.new(320, 180), false)
-            FishingController.UpdateChargeState(VirtualFishingData, workspace:GetServerTimeNow())
-            AnimationController:PlayAnimation("StartRodCharge")
-            local now = tick()
-            local status, result = nil, nil
-            while true do
-                local current = tick()
-                if FishingController._getPower() > 0.99 and current - now > 0.1 then
-                    task.spawn(function()
-                        FishingController.UpdateChargeState(VirtualFishingData)
-                        AnimationController:StopAnimation("StartRodCharge")
-                        AnimationController:PlayAnimation("RodThrow")
-                    end)
-                    status, result = FishingController.SendFishingRequestToServer(VirtualFishingData, Vector2.new(320, 180), 0.998 + (1.0 - 0.998) * math.random())
-                    break
-                end
-                if current - now > 3 then
-                    break
-                end
-                task.wait(0.001)
-            end
-            FishingController.FishingRodStarted(VirtualFishingData, result)
-            task.wait(1)
-            local Backpack = game.Players.LocalPlayer.PlayerGui.Backpack.Display.Inventory.Notification.Label.Text
-            local now = tick()
-            while true do
-                if Backpack ~= game.Players.LocalPlayer.PlayerGui.Backpack.Display.Inventory.Notification.Label.Text then
-                    break
-                end
-                if tick() - now > 5 then
-                    CancelFishingInputs()
-                    break
-                end
-                FishingController.FishingMinigameClick(VirtualFishingData)
-                task.wait(0.05)
-            end
-            task.wait(1.5)
-
-        elseif Settings["FishingMode"] == "Hunter" then
-            CancelFishingInputs()
-            local status, result = ChargeFishingRod()
-            if not status then
-                continue
-            end
-            local status, result = RequestFishingMinigameStarted()
-            if status and result["SelectedRarity"] <= 0.0002 then
-                local delay = (1 / result["FishingClickPower"]) * RodDelays[result["FishingRodTier"]]
-                task.wait(delay)
-                FishingCompleted()
-                task.wait(0.3)
-            end
-
         elseif Settings["FishingMode"] == "Normal" or Settings["FishingMode"] == "FastFishing" then
             CancelFishingInputs()
             local status, result = ChargeFishingRod()
