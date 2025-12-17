@@ -642,9 +642,9 @@ while Temporary["Running"] do
                 task.wait(0.1)
                 ChargeFishingRod()
                 RequestFishingMinigameStarted()
-                task.wait(1.3)
+                task.wait(1.2)
                 FishingCompleted()
-                task.wait(0.4)
+                task.wait(0.3)
                 end)
             task.wait(2)
 
