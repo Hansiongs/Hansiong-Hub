@@ -651,27 +651,37 @@ while Temporary["Running"] do
             HState.Lock = false
             HState.SuccessStreak = 0
             HState.FailStreak = 0
+            task.wait(0.2)
         end
 
         HState.Got = false
-        local timex = workspace:GetServerTimeNow()
-
+        local timex = workspace:GetServerTimeNow() 
         if HState.Mode == "FAST" then
             task.spawn(function()
                 pcall(function()
-                    CancelFishingInputs()
+                    Net["RF/CancelFishingInputs"]:InvokeServer()
                     task.wait(0.1) 
-                    ChargeFishingRod(timex)
-                    RequestFishingMinigameStarted(timex)
+                    Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
+                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
             end)
         else
-            pcall(function() CancelFishingInputs() end)
-            
-            local chargeSuccess = pcall(function() ChargeFishingRod(timex) end)
+            pcall(function() Net["RF/CancelFishingInputs"]:InvokeServer() end)
+        
+            local chargeSuccess = pcall(function() 
+                Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
+            end)
+
             if chargeSuccess then
                 task.wait(0.1)
-                pcall(function() RequestFishingMinigameStarted(timex) end)
+                local startSuccess = pcall(function() 
+                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
+                end)
+                
+                if not startSuccess then
+                    task.wait(0.5)
+                    continue
+                end
             else
                 task.wait(0.5)
                 continue
@@ -683,7 +693,9 @@ while Temporary["Running"] do
         task.wait(0.4)
 
         if not HState.Lock and not HState.Got then
-            if HState.SuccessStreak > 0 then HState.SuccessStreak = 0 end
+            if HState.SuccessStreak > 0 then 
+                HState.SuccessStreak = 0 
+            end
             
             HState.FailStreak = HState.FailStreak + 1
             if HState.FailStreak >= HCfg[HState.Mode].FailMax then
