@@ -8,19 +8,27 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-local Packages = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index")
+-- [[ 1. SAFE LOAD SYSTEM (WAJIB) ]] --
+-- Kita load folder Packages dulu dengan aman
+local Packages = ReplicatedStorage:WaitForChild("Packages")
+
+-- A. Cari Network Folder (sleitnick_net)
+local Index = Packages:WaitForChild("_Index")
 local Net = nil
-for _, folder in pairs(Packages:GetChildren()) do
+for _, folder in pairs(Index:GetChildren()) do
     if folder.Name:match("sleitnick_net") then
         Net = folder:WaitForChild("net")
         break
     end
 end
+if not Net then return warn("❌ CRITICAL: Folder Network (sleitnick_net) tidak ketemu!") end
 
-if not Net then 
-    return warn("CRITICAL ERROR: Folder Network tidak ditemukan! Script berhenti.")
-end
+-- B. Cari Replion (Data Player) - FIX ERROR DISINI
+local ReplionModule = Packages:WaitForChild("Replion")
+local DataReplion = require(ReplionModule).Client:WaitReplion("Data") 
+-- ^ Variabel ini sekarang bernama 'DataReplion' agar fungsi di bawah bisa membacanya.
 
+-- [[ 2. VARIABLES & CONFIG ]] --
 local Owned = { ["Rods"] = {}, ["Baits"] = {}, ["Items"] = {} }
 local Temporary = {
     ["Running"] = true,
@@ -42,7 +50,7 @@ local HCfg = {
 }
 local HState = {Mode = "NORM", D = 1.0, Lock = false, SStr = 0, FStr = 0, Got = false}
 
-local Replion = require(ReplicatedStorage.Packages.Replion).Client:WaitReplion("Data")
+-- [[ 3. LOAD DATABASE ONLINE ]] --
 local DBFish = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/fish_list'))
 local DBRod = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/rod_list'))
 local DBBait = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/bait_list'))
@@ -75,6 +83,7 @@ local WeathersData = {
     ["Storm"] = 35000, ["Radiant"] = 50000, ["Shark Hunt"] = 300000,
 }
 
+-- [[ 4. FUNCTIONS ]] --
 function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
 function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
 function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
