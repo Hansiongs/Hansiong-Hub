@@ -131,7 +131,6 @@ function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireSe
 function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
 function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
 function RequestFishingMinigameStarted() return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), workspace:GetServerTimeNow()) end
-function FishingCompleted() return Net["RE/FishingCompleted"]:FireServer() end
 function UpdateAutoFishingState(status) return Net["RF/UpdateAutoFishingState"]:InvokeServer(status) end
 function CancelFishingInputs() return Net["RF/CancelFishingInputs"]:InvokeServer() end
 function SellAllItems() return Net["RF/SellAllItems"]:InvokeServer() end
@@ -142,15 +141,6 @@ function PurchaseBait(Id) return Net["RF/PurchaseBait"]:InvokeServer(Id) end
 function EquipBait(Id) return Net["RE/EquipBait"]:FireServer(Id) end
 function PlaceLeverItem(item) return Net["RE/PlaceLeverItem"]:FireServer(item) end
 function PurchaseWeatherEvent(name) return Net["RF/PurchaseWeatherEvent"]:InvokeServer(name) end
-
-local Packages = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index")
-local Net = nil
-for _, folder in pairs(Packages:GetChildren()) do
-    if folder.Name:match("sleitnick_net") then
-        Net = folder:WaitForChild("net")
-        break
-    end
-end
 
 if not Net then 
     return warn("❌ CRITICAL ERROR: Folder Network tidak ditemukan! Script berhenti.")
@@ -684,7 +674,7 @@ while Temporary["Running"] do
         end
 
         task.wait(HState.CurrentDelay)
-        FishingCompleted()
+        Net["RE/FishingCompleted"]:FireServer()
         task.wait(0.4)
 
         if not HState.Lock and not HState.Got then
