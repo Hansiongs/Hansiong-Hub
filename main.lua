@@ -7,31 +7,42 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Character = Player.Character or Player.CharacterAdded:Wait()
 
+-- [[ 1. SAFE LOAD SYSTEM (FIX RACE CONDITION) ]]
 local Packages = ReplicatedStorage:WaitForChild("Packages")
 local Index = Packages:WaitForChild("_Index")
+
+-- Cari Network dengan aman
 local Net = nil
 for _, v in pairs(Index:GetChildren()) do
-    if v.Name:match("sleitnick_net") then Net = v:WaitForChild("net"); break end
+    if v.Name:match("sleitnick_net") then 
+        Net = v:WaitForChild("net")
+        break 
+    end
 end
-if not Net then return warn("Critical: Net folder not found") end
+if not Net then return warn("CRITICAL: Network Folder Not Found") end
 
-local Replion = require(Packages:WaitForChild("Replion"))
-local DataReplion = Replion.Client:WaitReplion("Data")
+-- Cari Data Player dengan aman (Fix Error 'Get')
+local ReplionModule = Packages:WaitForChild("Replion")
+local Replion = require(ReplionModule)
+local DataReplion = Replion.Client:WaitReplion("Data") 
 
+-- [[ 2. CONFIG & VARIABLES ]]
 local Owned = { ["Rods"] = {}, ["Baits"] = {}, ["Items"] = {} }
-local RodDelays = {[1]=0.164, [2]=0.168, [3]=0.172, [4]=0.176, [5]=0.18, [6]=0.184, [7]=0.188}
 local Temporary = {
     ["Running"] = true, ["FishCatch"] = 99999, ["FishingCatch"] = 0,
     ["BestRod"] = nil, ["BestRodId"] = nil, ["BestBait"] = nil,
     ["Location"] = nil, ["ScreenGui"] = nil, ["Render"] = nil,
     ["Timex"] = tick(), ["AFK"] = tick(), ["Logs"] = {},
 }
+
+-- Config Hybrid Hansen
 local HCfg = {
     FAST = {Id = 257, S = 1.2, Add = 0.05, F = 2, W = 3},
     NORM = {S = 0.6, Add = 0.1, F = 2, W = 3}
 }
 local HState = {Mode = "NORM", D = 1.0, Lock = false, SStr = 0, FStr = 0, Got = false}
 
+-- [[ 3. DATABASE ]]
 local DBFish = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/fish_list'))
 local DBRod = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/rod_list'))
 local DBBait = HttpService:JSONDecode(game:HttpGet('https://hrplay.cloud/api/bait_list'))
@@ -60,6 +71,7 @@ local Locations = {
 }
 local WeathersData = {["Wind"]=10000,["Snow"]=15000,["Cloudy"]=20000,["Storm"]=35000,["Radiant"]=50000,["Shark Hunt"]=300000}
 
+-- [[ 4. FUNCTIONS ]]
 function EquipToolFromHotbar(n) return Net["RE/EquipToolFromHotbar"]:FireServer(n or 1) end
 function UnequipToolFromHotbar(n) return Net["RE/UnequipToolFromHotbar"]:FireServer(n or 1) end
 function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
@@ -102,6 +114,7 @@ function GetDeepSeaQuest()
     local res = {"1/1", "1/1", "1/1", "1/1"}
     if qL then
         for _, q in ipairs(qL:GetChildren()) do
+            -- Fix UIListLayout Error: Cek dulu apakah dia Frame
             if q:IsA("Frame") and q:FindFirstChild("Content") and q.Content.Objective1.Prefix.Text:find("300") then
                 for i = 1, 4 do res[i] = q.Content["Objective"..i].Progress.Text end
                 break
@@ -116,6 +129,7 @@ function GetJungle2025Quest()
     local res = {"1/1", "1/1", "1/1", "1/1"}
     if qL then
         for _, q in ipairs(qL:GetChildren()) do
+             -- Fix UIListLayout Error: Cek dulu apakah dia Frame
             if q:IsA("Frame") and q:FindFirstChild("Content") then
                 local txt = q.Content.Objective1.Prefix.Text or ""
                 if txt:find("Create 3") or txt:find("Element") then
@@ -176,6 +190,7 @@ function LowSetting()
     pcall(function() settings().Rendering.QualityLevel=1 end)
 end
 
+-- [[ 5. LISTENER (HYBRID & CALIBRATION) ]]
 Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(m1, m2, m3)
     HState.Got = true; HState.FStr = 0
     if not HState.Lock then
@@ -203,6 +218,7 @@ end
 for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
 PlayerGui.ChildAdded:Connect(disable)
 
+-- [[ 6. START ]]
 LowSetting()
 GetRods()
 GetBaits()
@@ -225,6 +241,7 @@ while Temporary["Running"] do
             elseif Settings["Rod"] and DBRod[Settings["Rod"]] and Owned["Rods"][DBRod[Settings["Rod"]].Id] and GetEquippedUid()~=Owned["Rods"][DBRod[Settings["Rod"]].Id] then EquipItem(Owned["Rods"][DBRod[Settings["Rod"]].Id],"Fishing Rods"); task.wait(0.2) end
             if not Settings["Bait"] and GetEquippedBaitId()~=Temporary["BestBait"] then EquipBait(Temporary["BestBait"]); task.wait(0.2) end
 
+            -- QUEST LOGIC
             if next(Settings["Quest"]) then
                 if contains(Settings["Quest"], "DeepSea") then
                     local q = GetDeepSeaQuest()
@@ -258,6 +275,7 @@ while Temporary["Running"] do
             if Temporary["Location"] ~= loc then Teleport(Locations[loc]); Temporary["Location"] = loc; task.wait(5) end
         end
 
+        -- [[ HYBRID FISHING LOGIC ]]
         local TMode = (Temporary["BestRodId"] == HCfg.FAST.Id) and "FAST" or "NORM"
         if TMode ~= HState.Mode then HState.Mode=TMode; HState.D=HCfg[TMode].S; HState.Lock=false; HState.SStr=0; HState.FStr=0 end
 
