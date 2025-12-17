@@ -29,17 +29,31 @@ local Temporary = {
     ["Logs"] = {},
 }
 
-local HCfg = {
-    FAST = {Id = 257, Start = 1.2, Add = 0.05, FailMax = 2, SuccessMax = 3},
-    NORM = {Start = 0.6, Add = 0.1, FailMax = 2, SuccessMax = 3}
+local AlgorithmConfig = {
+    FAST = { 
+        RodID = 257,
+        StartDelay = 1.2,
+        AddStep = 0.05,
+        FailThreshold = 2,
+        SuccessThreshold = 3,
+    },
+    NORM = { 
+        StartDelay = 0.6,
+        AddStep = 0.1,
+        FailThreshold = 2,
+        SuccessThreshold = 3,
+    }
 }
 
 local HState = {
-    Mode = "NORM", 
-    D = 1.0, 
-    Lock = false, 
-    SuccessStreak = 0, 
-    FailStreak = 0,    
+    CurrentMode = "NORM",
+    CurrentDelay = 0.6,
+    ActiveStep = 0.1,
+    ActiveFailThresh = 2,
+    ActiveSuccessThresh = 3,
+    Lock = false,
+    SuccessStreak = 0,
+    FailStreak = 0,
     Got = false
 }
 
@@ -441,13 +455,13 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
     
     if not HState.Lock then
         HState.SuccessStreak = HState.SuccessStreak + 1
-        if HState.SuccessStreak >= HCfg[HState.Mode].SuccessMax then
+        if HState.SuccessStreak >= HState.ActiveSuccessThresh then
             HState.Lock = true
-            local m = (HState.Mode == "FAST") and 0.02 or 0.05
-            HState.D = math.floor((HState.D + m) * 1000) / 1000
+            local margin = (HState.CurrentMode == "FAST") and 0.02 or 0.05
+            local FinalDelay = math.floor((HState.CurrentDelay + margin) * 1000)/1000
+            HState.CurrentDelay = FinalDelay
         end
     end
-    
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
@@ -644,23 +658,31 @@ while Temporary["Running"] do
             end
         end
 
-        local TMode = (Temporary["BestRodId"] == HCfg.FAST.Id) and "FAST" or "NORM"
-        if TMode ~= HState.Mode then
-            HState.Mode = TMode
-            HState.D = HCfg[TMode].Start
+        local DetectedMode = (Temporary["BestRodId"] == AlgorithmConfig.FAST.RodID) and "FAST" or "NORM"
+        
+        if DetectedMode ~= HState.CurrentMode then
+            HState.CurrentMode = DetectedMode
+            
+            local Cfg = AlgorithmConfig[HState.CurrentMode]
+            HState.CurrentDelay = Cfg.StartDelay
+            HState.ActiveStep = Cfg.AddStep
+            HState.ActiveFailThresh = Cfg.FailThreshold
+            HState.ActiveSuccessThresh = Cfg.SuccessThreshold
+
             HState.Lock = false
-            HState.SuccessStreak = 0
             HState.FailStreak = 0
+            HState.SuccessStreak = 0
             task.wait(0.2)
         end
 
         HState.Got = false
         local timex = workspace:GetServerTimeNow() 
-        if HState.Mode == "FAST" then
+
+        if HState.CurrentMode == "FAST" then
             task.spawn(function()
                 pcall(function()
                     Net["RF/CancelFishingInputs"]:InvokeServer()
-                    task.wait(0.1) 
+                    task.wait(0.1) -- Wajib delay
                     Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
@@ -679,18 +701,18 @@ while Temporary["Running"] do
                 end)
                 
                 if not startSuccess then
-                    task.wait(0.6)
+                    task.wait(0.5)
                     continue
                 end
             else
-                task.wait(0.6)
+                task.wait(0.5)
                 continue
             end
         end
 
-        task.wait(HState.D)
+        task.wait(HState.CurrentDelay)
         FishingCompleted()
-        task.wait(0.4)
+        task.wait(0.4) 
 
         if not HState.Lock and not HState.Got then
             if HState.SuccessStreak > 0 then 
@@ -698,8 +720,8 @@ while Temporary["Running"] do
             end
             
             HState.FailStreak = HState.FailStreak + 1
-            if HState.FailStreak >= HCfg[HState.Mode].FailMax then
-                HState.D = HState.D + HCfg[HState.Mode].Add
+            if HState.FailStreak >= HState.ActiveFailThresh then
+                HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                 HState.FailStreak = 0 
             end
         end
