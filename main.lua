@@ -30,19 +30,8 @@ local Temporary = {
 }
 
 local AlgorithmConfig = {
-    FAST = { 
-        RodID = 257,
-        StartDelay = 1.2,
-        AddStep = 0.05,
-        FailThreshold = 2,
-        SuccessThreshold = 3,
-    },
-    NORM = { 
-        StartDelay = 0.6,
-        AddStep = 0.1,
-        FailThreshold = 2,
-        SuccessThreshold = 3,
-    }
+    FAST = { RodID = 257, StartDelay = 1.2, AddStep = 0.05, FailThreshold = 2, SuccessThreshold = 3 },
+    NORM = { StartDelay = 0.6, AddStep = 0.1, FailThreshold = 2, SuccessThreshold = 3 }
 }
 
 local HState = {
@@ -458,10 +447,10 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
         if HState.SuccessStreak >= HState.ActiveSuccessThresh then
             HState.Lock = true
             local margin = (HState.CurrentMode == "FAST") and 0.02 or 0.05
-            local FinalDelay = math.floor((HState.CurrentDelay + margin) * 1000)/1000
-            HState.CurrentDelay = FinalDelay
+            HState.CurrentDelay = math.floor((HState.CurrentDelay + margin) * 1000)/1000
         end
     end
+
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
@@ -658,17 +647,18 @@ while Temporary["Running"] do
             end
         end
 
-        local DetectedMode = (Temporary["BestRodId"] == AlgorithmConfig.FAST.RodID) and "FAST" or "NORM"
-        
+        local DetectedMode = "NORM"
+        if Temporary["BestRodId"] == AlgorithmConfig.FAST.RodID then 
+            DetectedMode = "FAST"
+        end
+
         if DetectedMode ~= HState.CurrentMode then
             HState.CurrentMode = DetectedMode
-            
             local Cfg = AlgorithmConfig[HState.CurrentMode]
             HState.CurrentDelay = Cfg.StartDelay
             HState.ActiveStep = Cfg.AddStep
             HState.ActiveFailThresh = Cfg.FailThreshold
             HState.ActiveSuccessThresh = Cfg.SuccessThreshold
-
             HState.Lock = false
             HState.FailStreak = 0
             HState.SuccessStreak = 0
@@ -682,14 +672,13 @@ while Temporary["Running"] do
             task.spawn(function()
                 pcall(function()
                     Net["RF/CancelFishingInputs"]:InvokeServer()
-                    task.wait(0.1) -- Wajib delay
+                    task.wait(0.1) 
                     Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
             end)
         else
             pcall(function() Net["RF/CancelFishingInputs"]:InvokeServer() end)
-        
             local chargeSuccess = pcall(function() 
                 Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
             end)
@@ -701,8 +690,7 @@ while Temporary["Running"] do
                 end)
                 
                 if not startSuccess then
-                    task.wait(0.5)
-                    continue
+                    task.wait(0.5) 
                 end
             else
                 task.wait(0.5)
@@ -712,12 +700,10 @@ while Temporary["Running"] do
 
         task.wait(HState.CurrentDelay)
         FishingCompleted()
-        task.wait(0.4) 
+        task.wait(0.4)
 
         if not HState.Lock and not HState.Got then
-            if HState.SuccessStreak > 0 then 
-                HState.SuccessStreak = 0 
-            end
+            if HState.SuccessStreak > 0 then HState.SuccessStreak = 0 end
             
             HState.FailStreak = HState.FailStreak + 1
             if HState.FailStreak >= HState.ActiveFailThresh then
@@ -727,6 +713,6 @@ while Temporary["Running"] do
         end
     else
         Temporary["FishCatch"] = 99999
-        task.wait(0.5)
+        task.wait(1)
     end
 end
