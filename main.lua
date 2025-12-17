@@ -30,10 +30,16 @@ local Temporary = {
 }
 
 local HCfg = {
-    FAST = {Id = 257, S = 1.2, Add = 0.05, F = 2, W = 3},
-    NORM = {S = 0.6, Add = 0.1, F = 2, W = 3}
-}
-local HState = {Mode = "NORM", D = 1.0, Lock = false, SStr = 0, FStr = 0, Got = false}
+    FAST = {Id = 257, Start = 1.2, Add = 0.05, FailMax = 2, SuccessMax = 3},
+    NORM = {Start = 0.6, Add = 0.1, FailMax = 2, SuccessMax = 3}}
+
+local HState = {
+    Mode = "NORM", 
+    D = 1.0, 
+    Lock = false, 
+    SuccessStreak = 0, -- Ganti SStr jadi SuccessStreak
+    FailStreak = 0,    -- Ganti FStr jadi FailStreak
+    Got = false}
 
 local Locations = {
     ["Sisyphus Statue"] = CFrame.new(-3729.25,-130.07,-885.64),
@@ -428,10 +434,12 @@ function LowSetting()
 end
 
 Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
-    HState.Got = true; HState.FStr = 0
+    HState.Got = true
+    HState.FailStreak = 0 
+    
     if not HState.Lock then
-        HState.SStr = HState.SStr + 1
-        if HState.SStr >= HCfg[HState.Mode].W then
+        HState.SuccessStreak = HState.SuccessStreak + 1
+        if HState.SuccessStreak >= HCfg[HState.Mode].SuccessMax then
             HState.Lock = true
             local m = (HState.Mode == "FAST") and 0.02 or 0.05
             HState.D = math.floor((HState.D + m) * 1000) / 1000
@@ -441,7 +449,6 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
-    -- Cek dulu biar gak error nil
     local fishInfo = DBFish[tostring(msg1)]
     if fishInfo then
         local Tier = fishInfo.Tier
@@ -637,37 +644,46 @@ while Temporary["Running"] do
 
         local TMode = (Temporary["BestRodId"] == HCfg.FAST.Id) and "FAST" or "NORM"
         if TMode ~= HState.Mode then
-            HState.Mode = TMode; HState.D = HCfg[TMode].S; HState.Lock = false; HState.SStr = 0; HState.FStr = 0
+            HState.Mode = TMode
+            HState.D = HCfg[TMode].Start
+            HState.Lock = false
+            HState.SuccessStreak = 0
+            HState.FailStreak = 0
         end
 
         HState.Got = false
+        local timex = workspace:GetServerTimeNow()
         if HState.Mode == "FAST" then
             task.spawn(function()
                 pcall(function()
                     CancelFishingInputs()
                     task.wait(0.1)
-                    ChargeFishingRod()
-                    RequestFishingMinigameStarted()
+                    ChargeFishingRod(timex)
+                    RequestFishingMinigameStarted(timex)
                 end)
             end)
         else
             pcall(function() CancelFishingInputs() end)
-            if pcall(function() ChargeFishingRod() end) then
+            local chargeSuccess = pcall(function() ChargeFishingRod(timex) end)
+            if chargeSuccess then
                 task.wait(0.1)
-                pcall(function() RequestFishingMinigameStarted() end)
-            else continue end
+                pcall(function() RequestFishingMinigameStarted(timex) end)
+            else
+                task.wait(0.5)
+                continue
+            end
         end
-
         task.wait(HState.D)
         FishingCompleted()
         task.wait(0.4)
 
         if not HState.Lock and not HState.Got then
-            if HState.SStr > 0 then HState.SStr = 0 end
-            HState.FStr = HState.FStr + 1
-            if HState.FStr >= HCfg[HState.Mode].F then
+            if HState.SuccessStreak > 0 then HState.SuccessStreak = 0 end
+            
+            HState.FailStreak = HState.FailStreak + 1
+            if HState.FailStreak >= HCfg[HState.Mode].FailMax then
                 HState.D = HState.D + HCfg[HState.Mode].Add
-                HState.FStr = 0
+                HState.FailStreak = 0 
             end
         end
     else
