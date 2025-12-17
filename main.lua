@@ -37,8 +37,8 @@ local HState = {
     Mode = "NORM", 
     D = 1.0, 
     Lock = false, 
-    SuccessStreak = 0, -- Ganti SStr jadi SuccessStreak
-    FailStreak = 0,    -- Ganti FStr jadi FailStreak
+    SuccessStreak = 0, 
+    FailStreak = 0,  
     Got = false}
 
 local Locations = {
