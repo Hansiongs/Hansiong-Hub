@@ -31,15 +31,17 @@ local Temporary = {
 
 local HCfg = {
     FAST = {Id = 257, Start = 1.2, Add = 0.05, FailMax = 2, SuccessMax = 3},
-    NORM = {Start = 0.6, Add = 0.1, FailMax = 2, SuccessMax = 3}}
+    NORM = {Start = 0.6, Add = 0.1, FailMax = 2, SuccessMax = 3}
+}
 
 local HState = {
     Mode = "NORM", 
     D = 1.0, 
     Lock = false, 
     SuccessStreak = 0, 
-    FailStreak = 0,  
-    Got = false}
+    FailStreak = 0,    
+    Got = false
+}
 
 local Locations = {
     ["Sisyphus Statue"] = CFrame.new(-3729.25,-130.07,-885.64),
@@ -653,17 +655,19 @@ while Temporary["Running"] do
 
         HState.Got = false
         local timex = workspace:GetServerTimeNow()
+
         if HState.Mode == "FAST" then
             task.spawn(function()
                 pcall(function()
                     CancelFishingInputs()
-                    task.wait(0.1)
+                    task.wait(0.1) 
                     ChargeFishingRod(timex)
                     RequestFishingMinigameStarted(timex)
                 end)
             end)
         else
             pcall(function() CancelFishingInputs() end)
+            
             local chargeSuccess = pcall(function() ChargeFishingRod(timex) end)
             if chargeSuccess then
                 task.wait(0.1)
@@ -673,6 +677,7 @@ while Temporary["Running"] do
                 continue
             end
         end
+
         task.wait(HState.D)
         FishingCompleted()
         task.wait(0.4)
