@@ -35,24 +35,6 @@ local HCfg = {
 }
 local HState = {Mode = "NORM", D = 1.0, Lock = false, SStr = 0, FStr = 0, Got = false}
 
-Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
-    HState.Got = true; HState.FStr = 0
-    if not HState.Lock then
-        HState.SStr = HState.SStr + 1
-        if HState.SStr >= HCfg[HState.Mode].W then
-            HState.Lock = true
-            local m = (HState.Mode == "FAST") and 0.02 or 0.05
-            HState.D = math.floor((HState.D + m) * 1000) / 1000
-        end
-    end
-    Temporary["FishCatch"] = Temporary["FishCatch"] + 1
-    Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
-    local Tier = DBFish[tostring(msg1)] and DBFish[tostring(msg1)].Tier or 1
-    if Tier == 7 or Settings["FavoriteFish"][tostring(msg1)] then
-        FavoriteItem(msg3.InventoryItem.UUID)
-    end
-end)
-
 local Locations = {
     ["Sisyphus Statue"] = CFrame.new(-3729.25,-130.07,-885.64),
     ["Esoteric Depths"] = CFrame.new(3253.03,-1288.65,1433.85),
@@ -455,9 +437,11 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
             HState.D = math.floor((HState.D + m) * 1000) / 1000
         end
     end
-
+    
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
+    
+    -- Cek dulu biar gak error nil
     local fishInfo = DBFish[tostring(msg1)]
     if fishInfo then
         local Tier = fishInfo.Tier
