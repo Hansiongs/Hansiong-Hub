@@ -684,7 +684,7 @@ while Temporary["Running"] do
             end
 
             CancelFishingInputs()
-            task.wait(0.2)
+            task.wait(0.1)
             local status, result = ChargeFishingRod()
             
             if status then
