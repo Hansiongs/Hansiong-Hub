@@ -80,7 +80,7 @@ local Locations = {
     ["Kohana"] = CFrame.new(-661.67, 3.04, 714.14),
     ["Ancient Ruin"] = CFrame.new(6099.12, -580, 4665.00),
     ["Christmast Island"] = CFrame.new(1137.03, 28, 1559.69),
-    ["Iron Cavern"] = CFrame.new(-8800.58, -580, 241.26), --[""] = CFrame.new(),
+    ["Iron Cavern"] = CFrame.new(-8800.58, -580, 241.26),
 }
 
 local WeathersData = {
@@ -427,7 +427,7 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
     if not HState.Lock then
         HState.SuccessStreak = HState.SuccessStreak + 1
         if HState.SuccessStreak >= HState.ActiveSuccessThresh then
-            print("🔒 [FAST MODE] LOCKED! Delay stabil di: " .. HState.CurrentDelay .. "s")
+            warn("🔒 [FAST MODE] LOCKED! Delay stabil di: " .. HState.CurrentDelay .. "s")
             HState.Lock = true
             local margin = (HState.CurrentMode == "FAST") and 0.02 or 0.05
             HState.CurrentDelay = math.floor((HState.CurrentDelay + margin) * 1000)/1000
@@ -491,11 +491,18 @@ while Temporary["Running"] do
     end
 
     if Settings["AutoFish"] then
+        local currentRodID = Temporary["BestRodId"]
+        
+        local DetectedMode = "Normal"
+        if currentRodID == 257 then 
+            DetectedMode = "Fast"
+        end
+        
         if Temporary["FishCatch"] > Settings["SellCount"] or (Temporary["FishingCatch"] % 50 == 0) then
             Temporary["FishCatch"] = 0
             SellAllItems()
             task.wait(0.2)
-
+            
             if GetEquippedType() ~= "Fishing Rods" then
                 EquipToolFromHotbar()
             end
@@ -523,9 +530,9 @@ while Temporary["Running"] do
                 end
             end
 
-            GetRods()
+            GetRods() 
             GetBaits()
-
+            
             if not Settings["Rod"] and GetEquippedUid() ~= Temporary["BestRod"] then
                 EquipItem(Temporary["BestRod"], "Fishing Rods")
                 task.wait(0.2)
@@ -572,13 +579,12 @@ while Temporary["Running"] do
                         end
                     else
                         table.remove(Settings["Quest"], 1)
-                        Settings["Location"] = null 
+                        Settings["Location"] = nil
                     end
                 end
 
                 if not contains(Settings["Quest"], "DeepSea") and contains(Settings["Quest"], "Jungle2025") then
                         local Jungle2025Quest = GetJungle2025Quest()
-                        
                         local isJungle1Done = CheckProgress(Jungle2025Quest[1])
                         local isJungle2Done = CheckProgress(Jungle2025Quest[2]) 
                         local isJungle3Done = CheckProgress(Jungle2025Quest[3]) 
@@ -586,37 +592,25 @@ while Temporary["Running"] do
                         
                         if not isJungle1Done or not isJungle2Done or not isJungle3Done then
                             local TempleLevers = GetTempleLevers()
-                            
-                            if not TempleLevers["Diamond Artifact"] then
-                                PlaceLeverItem("Diamond Artifact"); task.wait(0.2)
-                            elseif not TempleLevers["Crescent Artifact"] then
-                                PlaceLeverItem("Crescent Artifact"); task.wait(0.2)
-                            elseif not TempleLevers["Hourglass Diamond Artifact"] then 
-                                PlaceLeverItem("Hourglass Diamond Artifact"); task.wait(0.2)
-                            elseif not TempleLevers["Arrow Artifact"] then
-                                PlaceLeverItem("Arrow Artifact"); task.wait(0.2)
+                            if not TempleLevers["Diamond Artifact"] then PlaceLeverItem("Diamond Artifact"); task.wait(0.2)
+                            elseif not TempleLevers["Crescent Artifact"] then PlaceLeverItem("Crescent Artifact"); task.wait(0.2)
+                            elseif not TempleLevers["Hourglass Diamond Artifact"] then PlaceLeverItem("Hourglass Diamond Artifact"); task.wait(0.2)
+                            elseif not TempleLevers["Arrow Artifact"] then PlaceLeverItem("Arrow Artifact"); task.wait(0.2)
                             end
                             
                             local TempleLevers = GetTempleLevers()
-                            if not TempleLevers["Diamond Artifact"] then
-                                Settings["Location"] = "Diamond Artifact"
-                            elseif not TempleLevers["Crescent Artifact"] then
-                                Settings["Location"] = "Crescent Artifact"
-                            elseif not TempleLevers["Hourglass Diamond Artifact"] then
-                                Settings["Location"] = "Hourglass Diamond Artifact"
-                            elseif not TempleLevers["Arrow Artifact"] then
-                                Settings["Location"] = "Arrow Artifact"
-                            elseif not isJungle2Done then
-                                Settings["Location"] = "Arrow Artifact" 
-                            elseif not isJungle3Done then
-                                Settings["Location"] = "Sacred Temple"
+                            if not TempleLevers["Diamond Artifact"] then Settings["Location"] = "Diamond Artifact"
+                            elseif not TempleLevers["Crescent Artifact"] then Settings["Location"] = "Crescent Artifact"
+                            elseif not TempleLevers["Hourglass Diamond Artifact"] then Settings["Location"] = "Hourglass Diamond Artifact"
+                            elseif not TempleLevers["Arrow Artifact"] then Settings["Location"] = "Arrow Artifact"
+                            elseif not isJungle2Done then Settings["Location"] = "Arrow Artifact" 
+                            elseif not isJungle3Done then Settings["Location"] = "Sacred Temple"
                             end
                         else
                             table.remove(Settings["Quest"], 1) 
-                            Settings["Location"] = null 
+                            Settings["Location"] = nil
                     end
                 end                
-                
             end
 
             if not contains(Settings["Quest"], "DeepSea") and not contains(Settings["Quest"], "Jungle2025") and not Settings["Location"] then
@@ -629,14 +623,11 @@ while Temporary["Running"] do
                 task.wait(5)
             end
         end
-        
-        local DetectedMode = "Normal"
-        if Temporary["BestRodId"] == 257 then 
-            DetectedMode = "Fast"
-        end
 
         if DetectedMode == "Fast" then
+            
             if HState.CurrentMode ~= "FAST" then
+                warn("✅ BERALIH KE FAST MODE (ROD 257 TERDETEKSI)")
                 HState.CurrentMode = "FAST"
                 local Cfg = AlgorithmConfig.FAST
                 HState.CurrentDelay = Cfg.StartDelay
@@ -653,12 +644,15 @@ while Temporary["Running"] do
             local timex = workspace:GetServerTimeNow() 
 
             task.spawn(function()
-                pcall(function()
+                local success, err = pcall(function()
                     Net["RF/CancelFishingInputs"]:InvokeServer()
                     SmartWait(0.1) 
                     Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
+                if not success then 
+                    warn("❌ CRITICAL ERROR DI FAST MODE: " .. tostring(err)) 
+                end
             end)
 
             SmartWait(HState.CurrentDelay)
@@ -668,15 +662,22 @@ while Temporary["Running"] do
             if not HState.Got then
                 HState.SuccessStreak = 0 
                 HState.FailStreak = HState.FailStreak + 1
+                
                 if HState.FailStreak >= HState.ActiveFailThresh then
                     if HState.Lock then
-                        print("🔓 [FAST MODE] UNLOCKED! Terlalu sering gagal. Kalibrasi ulang...")
+                        warn("🔓 [FAST MODE] UNLOCKED! Gagal tangkap. Kalibrasi ulang...")
                         HState.Lock = false
                     end
+                    
+                    local oldDelay = HState.CurrentDelay
+                    
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
-                    print("⚠️ [FAST MODE] Delay Ditambah: " .. oldDelay .. "s -> " .. HState.CurrentDelay .. "s")
-                    if HState.CurrentDelay > 2 then
+                    
+                    warn("⚠️ [FAST MODE] Delay Ditambah: " .. oldDelay .. "s -> " .. HState.CurrentDelay .. "s")
+
+                    if HState.CurrentDelay > 2.3 then
+                         warn("🚨 [FAST MODE] RESET DELAY (Ketinggian)")
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
@@ -685,13 +686,16 @@ while Temporary["Running"] do
             end
 
         else 
-            if HState.CurrentMode ~= "NORM" then HState.CurrentMode = "NORM" end
+            if HState.CurrentMode ~= "NORM" then 
+                warn("⚠️ MASUK NORMAL MODE. ID ROD TERBACA: " .. tostring(currentRodID))
+                HState.CurrentMode = "NORM" 
+            end
+
             CancelFishingInputs()
             local status, result = ChargeFishingRod()
             
             if status then
                 local status, result = RequestFishingMinigameStarted()
-                
                 if status then
                     local delay = (1 / result["FishingClickPower"]) * RodDelays[result["FishingRodTier"]]
                     SmartWait(delay)
