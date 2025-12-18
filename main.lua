@@ -670,7 +670,7 @@ while Temporary["Running"] do
                     
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
-                    if HState.CurrentDelay > 1.7 then
+                    if HState.CurrentDelay > 1.8 then
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
@@ -694,7 +694,7 @@ while Temporary["Running"] do
                 task.wait(delay)
                 Net["RE/FishingCompleted"]:FireServer()
                 task.wait(0.3)
-                end
+                
             end
         end
     else
