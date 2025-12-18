@@ -5,9 +5,14 @@ local Owned = {
     ["Items"] = {},
 }
 
-local function PreciseWait(seconds)
+local RunService = game:GetService("RunService")
+local function SmartWait(seconds)
     local start = os.clock()
-    while os.clock() - start < seconds do
+    local target = start + seconds
+    while target - os.clock() > 0.01 do
+        RunService.Heartbeat:Wait()
+    end
+    while os.clock() < target do
     end
 end
 
@@ -636,7 +641,7 @@ while Temporary["Running"] do
                 HState.Lock = false
                 HState.FailStreak = 0
                 HState.SuccessStreak = 0
-                task.wait(0.2) 
+                task.wait(0.2)
             end
 
             HState.Got = false
@@ -645,17 +650,14 @@ while Temporary["Running"] do
             task.spawn(function()
                 pcall(function()
                     Net["RF/CancelFishingInputs"]:InvokeServer()
-                    PreciseWait(0.1) 
+                    SmartWait(0.1) 
                     Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
             end)
-
-            -- [PENTING] GANTI task.wait DISINI
-            PreciseWait(HState.CurrentDelay)
-            
+            SmartWait(HState.CurrentDelay)
             Net["RE/FishingCompleted"]:FireServer()
-            task.wait(0.4)
+            task.wait(0.4) 
 
             if not HState.Lock and not HState.Got then
                 if HState.SuccessStreak > 0 then HState.SuccessStreak = 0 end
@@ -670,14 +672,15 @@ while Temporary["Running"] do
             if HState.CurrentMode ~= "NORM" then HState.CurrentMode = "NORM" end
             CancelFishingInputs()
             local status, result = ChargeFishingRod()
-
+            
             if status then
                 local status, result = RequestFishingMinigameStarted()
+                
                 if status then
                     local delay = (1 / result["FishingClickPower"]) * RodDelays[result["FishingRodTier"]]
-                    PreciseWait(delay)
+                    SmartWait(delay)
                     Net["RE/FishingCompleted"]:FireServer()
-                    task.wait(0.3) -- Jeda santai biarin task.wait
+                    task.wait(0.3)
                 end
             else
                 task.wait(0.5)
