@@ -42,7 +42,7 @@ local Temporary = {
 }
 
 local AlgorithmConfig = {
-    FAST = { RodID = 257, StartDelay = 1.2, AddStep = 0.05, FailThreshold = 2, SuccessThreshold = 3 },
+    FAST = { RodID = 257, StartDelay = 1.4, AddStep = 0.05, FailThreshold = 2, SuccessThreshold = 3 },
     NORM = { StartDelay = 0.6, AddStep = 0.1, FailThreshold = 2, SuccessThreshold = 3 }
 }
 
@@ -427,6 +427,7 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
     if not HState.Lock then
         HState.SuccessStreak = HState.SuccessStreak + 1
         if HState.SuccessStreak >= HState.ActiveSuccessThresh then
+            print("🔒 [FAST MODE] LOCKED! Delay stabil di: " .. HState.CurrentDelay .. "s")
             HState.Lock = true
             local margin = (HState.CurrentMode == "FAST") and 0.02 or 0.05
             HState.CurrentDelay = math.floor((HState.CurrentDelay + margin) * 1000)/1000
@@ -669,12 +670,13 @@ while Temporary["Running"] do
                 HState.FailStreak = HState.FailStreak + 1
                 if HState.FailStreak >= HState.ActiveFailThresh then
                     if HState.Lock then
+                        print("🔓 [FAST MODE] UNLOCKED! Terlalu sering gagal. Kalibrasi ulang...")
                         HState.Lock = false
                     end
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
-
-                    if HState.CurrentDelay > 2.3 then
+                    print("⚠️ [FAST MODE] Delay Ditambah: " .. oldDelay .. "s -> " .. HState.CurrentDelay .. "s")
+                    if HState.CurrentDelay > 2 then
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
