@@ -628,9 +628,13 @@ while Temporary["Running"] do
                 task.wait(5)
             end
         end
+        
+        local DetectedMode = "Normal"
+        if Temporary["BestRodId"] == 257 then 
+            DetectedMode = "Fast"
+        end
 
-        if Settings["FishingMode"] == "Fast" then
-            
+        if DetectedMode == "Fast" then
             if HState.CurrentMode ~= "FAST" then
                 HState.CurrentMode = "FAST"
                 local Cfg = AlgorithmConfig.FAST
@@ -655,6 +659,7 @@ while Temporary["Running"] do
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
             end)
+
             SmartWait(HState.CurrentDelay)
             Net["RE/FishingCompleted"]:FireServer()
             task.wait(0.4) 
@@ -668,7 +673,7 @@ while Temporary["Running"] do
                 end
             end
 
-        elseif Settings["FishingMode"] == "Normal" then
+        else 
             if HState.CurrentMode ~= "NORM" then HState.CurrentMode = "NORM" end
             CancelFishingInputs()
             local status, result = ChargeFishingRod()
