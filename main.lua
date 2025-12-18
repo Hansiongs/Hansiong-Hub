@@ -664,13 +664,22 @@ while Temporary["Running"] do
             Net["RE/FishingCompleted"]:FireServer()
             task.wait(0.4) 
 
-            if not HState.Lock and not HState.Got then
-                if HState.SuccessStreak > 0 then HState.SuccessStreak = 0 end
+            if not HState.Got then
+                HState.SuccessStreak = 0 
                 HState.FailStreak = HState.FailStreak + 1
                 if HState.FailStreak >= HState.ActiveFailThresh then
+                    if HState.Lock then
+                        HState.Lock = false
+                    end
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
+
+                    if HState.CurrentDelay > 2.3 then
+                        HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
+                    end
                 end
+            else
+                HState.FailStreak = 0 
             end
 
         else 
