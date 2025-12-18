@@ -684,6 +684,7 @@ while Temporary["Running"] do
             end
 
             CancelFishingInputs()
+            task.wait(0.2)
             local status, result = ChargeFishingRod()
             
             if status then
@@ -692,7 +693,7 @@ while Temporary["Running"] do
                     local delay = (1 / result["FishingClickPower"]) * RodDelays[result["FishingRodTier"]]
                     SmartWait(delay)
                     Net["RE/FishingCompleted"]:FireServer()
-                    task.wait(0.3)
+                    task.wait(0.5)
                 end
             else
                 task.wait(0.5)
