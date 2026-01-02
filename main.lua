@@ -1,6 +1,6 @@
 local Settings = getgenv().Settings
 
-getgenv().AutoDelay = 1.2
+getgenv().AutoDelay = 0.5
 getgenv().LastCatch = false
 getgenv().FailCount = 0
 
@@ -92,6 +92,18 @@ for _, folder in pairs(Packages:GetChildren()) do
     end
 end
 
+local function disable(gui)
+    if gui:IsA("ScreenGui") then
+        local name = gui.Name:lower()
+        if name:find("small notification") or name:find("cutscene") then
+            gui.Enabled = false
+            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if gui.Enabled then gui.Enabled = false end
+            end)
+        end
+    end
+end
+
 function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
 function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
 function ChargeFishingRod(t) return Net["RF/ChargeFishingRod"]:InvokeServer(t or workspace:GetServerTimeNow()) end
@@ -108,18 +120,6 @@ function PurchaseWeatherEvent(name) return Net["RF/PurchaseWeatherEvent"]:Invoke
 
 if not Net then 
     return
-end
-
-local function disable(gui)
-    if gui:IsA("ScreenGui") then
-        local name = gui.Name:lower()
-        if name:find("small notification") or name:find("cutscene") then
-            gui.Enabled = false
-            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-                if gui.Enabled then gui.Enabled = false end
-            end)
-        end
-    end
 end
 
 for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
@@ -608,7 +608,7 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
                 if getgenv().FailCount >= 3 then
                     getgenv().AutoDelay = getgenv().AutoDelay + 0.05
                     getgenv().FailCount = 0
-                    if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 1.2 end
+                    if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 0.5 end
                 end
             end
 
