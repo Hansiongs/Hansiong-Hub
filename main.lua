@@ -1,4 +1,7 @@
 local Settings = getgenv().Settings
+getgenv().AutoDelay = 1.4
+getgenv().LastCatch = false
+getgenv().FailCount = 0
 local Owned = {
     ["Rods"] = {},
     ["Baits"] = {},
@@ -89,8 +92,8 @@ end
 
 function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
 function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
-function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
-function RequestFishingMinigameStarted() return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), workspace:GetServerTimeNow()) end
+function ChargeFishingRod(t) return Net["RF/ChargeFishingRod"]:InvokeServer(t or workspace:GetServerTimeNow()) end
+function RequestFishingMinigameStarted(t) return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), t or workspace:GetServerTimeNow()) end
 function CancelFishingInputs() return Net["RF/CancelFishingInputs"]:InvokeServer() end
 function SellAllItems() return Net["RF/SellAllItems"]:InvokeServer() end
 function FavoriteItem(Uid) return Net["RE/FavoriteItem"]:FireServer(Uid) end
@@ -372,15 +375,19 @@ function LowSetting()
 end
 
 Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
+    getgenv().LastCatch = true
+    getgenv().FailCount = 0
+
+    if Settings["FishingMode"] == "Fast" and getgenv().AutoDelay > 0.85 then
+        getgenv().AutoDelay = getgenv().AutoDelay - 0.05
+    end
+
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
     local fishInfo = DBFish[tostring(msg1)]
-    if fishInfo then
-        local Tier = fishInfo.Tier
-        if Tier == 7 or Settings["FavoriteFish"][tostring(msg1)] then
-            FavoriteItem(msg3.InventoryItem.UUID)
-        end
+    if fishInfo and (fishInfo.Tier == 7 or Settings["FavoriteFish"][tostring(msg1)]) then
+        FavoriteItem(msg3.InventoryItem.UUID)
     end
 end)
 
@@ -577,17 +584,32 @@ while Temporary["Running"] do
             end
         end
 
-        if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
+if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
+            getgenv().LastCatch = false
+            local currentCycleDelay = getgenv().AutoDelay
+
             task.spawn(function()
-                Net["RF/CancelFishingInputs"]:InvokeServer()
-                task.wait(0.1)
-                Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
-                Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
-                task.wait(1.2)
-                Net["RE/FishingCompleted"]:FireServer()
-                task.wait(0.3)
+                pcall(function()
+                    local now = workspace:GetServerTimeNow()
+                    CancelFishingInputs()
+                    task.wait(0.1)
+                    ChargeFishingRod(now)
+                    RequestFishingMinigameStarted(now)
+                    task.wait(currentCycleDelay)
+                    Net["RE/FishingCompleted"]:FireServer()
+                end)
             end)
-        else 
+            task.wait(currentCycleDelay + 0.6)
+            if not getgenv().LastCatch then
+                getgenv().FailCount = getgenv().FailCount + 1
+                if getgenv().FailCount >= 2 then
+                    getgenv().AutoDelay = getgenv().AutoDelay + 0.05
+                    getgenv().FailCount = 0
+                    if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 1.4 end
+                end
+            end
+
+        else
             CancelFishingInputs()
             task.wait(0.2)
             local status, result = ChargeFishingRod()
