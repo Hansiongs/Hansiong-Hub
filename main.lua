@@ -595,17 +595,19 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
                 pcall(function()
                     local now = workspace:GetServerTimeNow()
                     CancelFishingInputs()
+                    task.wait(0.1)
                     ChargeFishingRod(now)
                     RequestFishingMinigameStarted(now)
                     task.wait(currentCycleDelay)
                     Net["RE/FishingCompleted"]:FireServer()
+                    task.wait(0.1)
                 end)
             end)
             task.wait(0.1)
             if not getgenv().LastCatch then
                 getgenv().FailCount = getgenv().FailCount + 1
                 if getgenv().FailCount >= 3 then
-                    getgenv().AutoDelay = getgenv().AutoDelay + 0.03
+                    getgenv().AutoDelay = getgenv().AutoDelay + 0.05
                     getgenv().FailCount = 0
                     if getgenv().AutoDelay > 1.8 then getgenv().AutoDelay = 0.4 end
                 end
