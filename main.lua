@@ -599,7 +599,7 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
                     Net["RE/FishingCompleted"]:FireServer()
                 end)
             end)
-            task.wait(currentCycleDelay + 0.6)
+            task.wait(0.2)
             if not getgenv().LastCatch then
                 getgenv().FailCount = getgenv().FailCount + 1
                 if getgenv().FailCount >= 2 then
