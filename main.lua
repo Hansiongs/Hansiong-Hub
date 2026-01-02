@@ -8,8 +8,18 @@ local Owned = {
 local RunService = game:GetService("RunService")
 
 local AlgorithmConfig = {
-    FAST = { StartDelay = 1.5, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
+    FAST = { StartDelay = 1.4, AddStep = 0.05, FailThreshold = 3, SuccessThreshold = 4 },
 }
+
+local function SmartWait(seconds)
+    local start = os.clock()
+    local target = start + seconds
+    while target - os.clock() > 0.01 do
+        RunService.Heartbeat:Wait()
+    end
+    while os.clock() < target do
+    end
+end
 
 local HState = {
     CurrentMode = "NORM",
@@ -615,7 +625,7 @@ while Temporary["Running"] do
                 HState.Lock = false
                 HState.FailStreak = 0
                 HState.SuccessStreak = 0
-                task.wait(0.2)
+                SmartWait(0.2)
             end
 
             HState.Got = false
@@ -624,15 +634,15 @@ while Temporary["Running"] do
             task.spawn(function()
                 local success, err = pcall(function()
                     Net["RF/CancelFishingInputs"]:InvokeServer()
-                    task.wait(0.1) 
+                    SmartWait(0.1) 
                     Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
             end)
 
-            task.wait(HState.CurrentDelay)
+            SmartWait(HState.CurrentDelay)
             Net["RE/FishingCompleted"]:FireServer()
-            task.wait(0.4) 
+            SmartWait(0.4) 
 
             if not HState.Got then
                 HState.SuccessStreak = 0 
@@ -644,7 +654,7 @@ while Temporary["Running"] do
                     
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
-                    if HState.CurrentDelay > 1.9 then
+                    if HState.CurrentDelay > 2 then
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
