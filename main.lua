@@ -599,7 +599,6 @@ while Temporary["Running"] do
                 SmartWait(0.3)
                 end)
             SmartWait(2)
-            end
         else 
             CancelFishingInputs()
             SmartWait(0.2)
