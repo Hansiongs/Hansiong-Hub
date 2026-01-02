@@ -7,10 +7,6 @@ local Owned = {
 
 local RunService = game:GetService("RunService")
 
-local AlgorithmConfig = {
-    FAST = { StartDelay = 1.4, AddStep = 0.05, FailThreshold = 3, SuccessThreshold = 4 },
-}
-
 local function SmartWait(seconds)
     local start = os.clock()
     local target = start + seconds
@@ -20,6 +16,10 @@ local function SmartWait(seconds)
     while os.clock() < target do
     end
 end
+
+local AlgorithmConfig = {
+    FAST = { StartDelay = 1.5, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
+}
 
 local HState = {
     CurrentMode = "NORM",
@@ -634,13 +634,13 @@ while Temporary["Running"] do
             task.spawn(function()
                 local success, err = pcall(function()
                     Net["RF/CancelFishingInputs"]:InvokeServer()
-                    SmartWait(0.1) 
+                    task.wait(0.1) 
                     Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                     Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
                 end)
             end)
 
-            SmartWait(HState.CurrentDelay)
+            task.wait(HState.CurrentDelay)
             Net["RE/FishingCompleted"]:FireServer()
             task.wait(0.4) 
 
