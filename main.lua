@@ -8,7 +8,7 @@ local Owned = {
 local RunService = game:GetService("RunService")
 
 local AlgorithmConfig = {
-    FAST = { StartDelay = 1.45, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
+    FAST = { StartDelay = 1.3, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
 }
 
 local function SmartWait(seconds)
