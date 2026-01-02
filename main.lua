@@ -594,7 +594,7 @@ while Temporary["Running"] do
                 SmartWait(0.2)
                 Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                 Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
-                SmartWait(0.8) 
+                SmartWait(0.9) 
                 Net["RE/FishingCompleted"]:FireServer()
                 SmartWait(0.3)
             end)
