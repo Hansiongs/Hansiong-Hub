@@ -582,7 +582,7 @@ while Temporary["Running"] do
                 task.wait(0.1)
                 ChargeFishingRod()
                 RequestFishingMinigameStarted()
-                task.wait(1.2)
+                task.wait(1.4)
                 Net["RE/FishingCompleted"]:FireServer()
                 task.wait(0.3)
             end)
