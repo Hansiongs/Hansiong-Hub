@@ -594,7 +594,7 @@ while Temporary["Running"] do
                 SmartWait(0.1)
                 ChargeFishingRod()
                 RequestFishingMinigameStarted()
-                SmartWait(1.4) 
+                SmartWait(1) 
                 Net["RE/FishingCompleted"]:FireServer()
                 SmartWait(0.3)
             end)
