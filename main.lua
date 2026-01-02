@@ -110,6 +110,21 @@ if not Net then
     return
 end
 
+local function disable(gui)
+    if gui:IsA("ScreenGui") then
+        local name = gui.Name:lower()
+        if name:find("small notification") or name:find("cutscene") then
+            gui.Enabled = false
+            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if gui.Enabled then gui.Enabled = false end
+            end)
+        end
+    end
+end
+
+for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
+PlayerGui.ChildAdded:Connect(disable)
+
 function GetCoin()
     return DataReplion:Get("Coins")
 end
@@ -413,20 +428,6 @@ game:GetService("RunService").Heartbeat:Connect(function(dt)
     end
 end)
 
-local function disable(gui)
-    if gui:IsA("ScreenGui") then
-        local name = gui.Name:lower()
-        if name:find("small notification") or name:find("cutscene") then
-            gui.Enabled = false
-            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-                if gui.Enabled then gui.Enabled = false end
-            end)
-        end
-    end
-end
-
-for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
-PlayerGui.ChildAdded:Connect(disable)
 
 LowSetting()
 GetRods()
@@ -604,7 +605,7 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
             task.wait(0.2)
             if not getgenv().LastCatch then
                 getgenv().FailCount = getgenv().FailCount + 1
-                if getgenv().FailCount >= 2 then
+                if getgenv().FailCount >= 3 then
                     getgenv().AutoDelay = getgenv().AutoDelay + 0.05
                     getgenv().FailCount = 0
                     if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 1.2 end
