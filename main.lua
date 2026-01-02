@@ -597,7 +597,7 @@ while Temporary["Running"] do
                 SmartWait(1.2) 
                 Net["RE/FishingCompleted"]:FireServer()
                 SmartWait(0.3)
-                end)
+            end)
             SmartWait(2)
         else 
             CancelFishingInputs()
@@ -613,11 +613,10 @@ while Temporary["Running"] do
                     SmartWait(0.3)
                 end
             else
-                continue
             end
         end
     else
         Temporary["FishCatch"] = 99999
         SmartWait(0.3)
     end
-end
+end 
