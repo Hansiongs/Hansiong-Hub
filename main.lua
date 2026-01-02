@@ -7,17 +7,6 @@ local Owned = {
 
 local RunService = game:GetService("RunService")
 
-local function SmartWait(seconds)
-    local start = os.clock()
-    local target = start + seconds
-    while target - os.clock() > 0.01 do
-        RunService.Heartbeat:Wait()
-    end
-    while os.clock() < target do
-    end
-end
-
-
 local RodDelays = {
 	[1] = 0.164,
 	[2] = 0.168,
@@ -591,14 +580,14 @@ while Temporary["Running"] do
         if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
             task.spawn(function()
                 Net["RF/CancelFishingInputs"]:InvokeServer()
-                SmartWait(0.1)
+                task.wait(0.1)
                 Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                 Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
-                SmartWait(1)
+                task.wait(1)
                 Net["RE/FishingCompleted"]:FireServer()
-                SmartWait(0.3)
+                task.wait(0.3)
             end)
-            SmartWait(1.8)
+            task.wait(1.8)
         else 
             CancelFishingInputs()
             task.wait(0.2)
