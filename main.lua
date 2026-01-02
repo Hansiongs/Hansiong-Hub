@@ -591,27 +591,27 @@ while Temporary["Running"] do
         if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
             task.spawn(function()
                 CancelFishingInputs()
-                task.wait(0.1)
+                SmartWait(0.1)
                 ChargeFishingRod()
                 RequestFishingMinigameStarted()
-                task.wait(1.2) -- Timing hardcoded dari rawx
+                SmartWait(1.2) 
                 Net["RE/FishingCompleted"]:FireServer()
-                task.wait(0.3)
+                SmartWait(0.3)
                 end)
-            task.wait(2)
+            SmartWait(2)
             end
         else 
             CancelFishingInputs()
-            task.wait(0.2)
+            SmartWait(0.2)
             local status, result = ChargeFishingRod()
             
             if status then
                 local status, result = RequestFishingMinigameStarted()
                 if status then
                     local delay = (1 / result["FishingClickPower"]) * RodDelays[result["FishingRodTier"]]
-                    task.wait(delay)
+                    SmartWait(delay)
                     Net["RE/FishingCompleted"]:FireServer()
-                    task.wait(0.3)
+                    SmartWait(0.3)
                 end
             else
                 continue
@@ -619,6 +619,6 @@ while Temporary["Running"] do
         end
     else
         Temporary["FishCatch"] = 99999
-        task.wait(0.3)
+        SmartWait(0.3)
     end
 end
