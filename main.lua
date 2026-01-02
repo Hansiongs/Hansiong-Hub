@@ -591,10 +591,10 @@ while Temporary["Running"] do
         if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
             task.spawn(function()
                 Net["RF/CancelFishingInputs"]:InvokeServer()
-                SmartWait(0.2)
+                SmartWait(0.1)
                 Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                 Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
-                SmartWait(0.9) 
+                SmartWait(1) 
                 Net["RE/FishingCompleted"]:FireServer()
                 SmartWait(0.3)
             end)
