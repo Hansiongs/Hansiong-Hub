@@ -604,7 +604,7 @@ while Temporary["Running"] do
             end
         end
 
-        if Settings["FishingMode"] == "Fast" then
+        if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
             if HState.CurrentMode ~= "FAST" then
                 HState.CurrentMode = "FAST"
                 local Cfg = AlgorithmConfig.FAST
