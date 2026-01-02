@@ -1,7 +1,9 @@
 local Settings = getgenv().Settings
-getgenv().AutoDelay = 1.4
+
+getgenv().AutoDelay = 1.2
 getgenv().LastCatch = false
 getgenv().FailCount = 0
+
 local Owned = {
     ["Rods"] = {},
     ["Baits"] = {},
@@ -605,7 +607,7 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
                 if getgenv().FailCount >= 2 then
                     getgenv().AutoDelay = getgenv().AutoDelay + 0.05
                     getgenv().FailCount = 0
-                    if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 1.4 end
+                    if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 1.2 end
                 end
             end
 
