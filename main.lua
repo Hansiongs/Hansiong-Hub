@@ -7,10 +7,6 @@ local Owned = {
 
 local RunService = game:GetService("RunService")
 
-local AlgorithmConfig = {
-    FAST = { StartDelay = 1.3, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
-}
-
 local function SmartWait(seconds)
     local start = os.clock()
     local target = start + seconds
@@ -21,17 +17,6 @@ local function SmartWait(seconds)
     end
 end
 
-local HState = {
-    CurrentMode = "NORM",
-    CurrentDelay = 0.6,
-    ActiveStep = 0.1,
-    ActiveFailThresh = 3,
-    ActiveSuccessThresh = 3,
-    Lock = false,
-    SuccessStreak = 0,
-    FailStreak = 0,
-    Got = false
-}
 
 local RodDelays = {
 	[1] = 0.164,
@@ -398,17 +383,6 @@ function LowSetting()
 end
 
 Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
-    HState.Got = true
-    HState.FailStreak = 0 
-    
-    if not HState.Lock then
-        HState.SuccessStreak = HState.SuccessStreak + 1
-        if HState.SuccessStreak >= HState.ActiveSuccessThresh then
-            HState.Lock = true
-            HState.CurrentDelay = math.floor((HState.CurrentDelay - 0.02) * 1000)/1000 
-            if HState.CurrentDelay < 0.5 then HState.CurrentDelay = 0.5 end -- Safety limit
-        end
-    end
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
@@ -615,54 +589,18 @@ while Temporary["Running"] do
         end
 
         if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
-            if HState.CurrentMode ~= "FAST" then
-                HState.CurrentMode = "FAST"
-                local Cfg = AlgorithmConfig.FAST
-                HState.CurrentDelay = Cfg.StartDelay
-                HState.ActiveStep = Cfg.AddStep
-                HState.ActiveFailThresh = Cfg.FailThreshold
-                HState.ActiveSuccessThresh = Cfg.SuccessThreshold
-                HState.Lock = false
-                HState.FailStreak = 0
-                HState.SuccessStreak = 0
-                SmartWait(0.2)
-            end
-
-            HState.Got = false
-            local timex = workspace:GetServerTimeNow() 
-
             task.spawn(function()
-                local success, err = pcall(function()
-                    Net["RF/CancelFishingInputs"]:InvokeServer()
-                    SmartWait(0.1) 
-                    Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
-                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
+                CancelFishingInputs()
+                task.wait(0.1)
+                ChargeFishingRod()
+                RequestFishingMinigameStarted()
+                task.wait(1.2) -- Timing hardcoded dari rawx
+                Net["RE/FishingCompleted"]:FireServer()
+                task.wait(0.3)
                 end)
-            end)
-
-            SmartWait(HState.CurrentDelay)
-            Net["RE/FishingCompleted"]:FireServer()
-            SmartWait(0.4) 
-
-            if not HState.Got then
-                HState.SuccessStreak = 0 
-                HState.FailStreak = HState.FailStreak + 1
-                if HState.FailStreak >= HState.ActiveFailThresh then
-                    HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
-                    HState.FailStreak = 0 
-                    if HState.CurrentDelay > 2 then
-                        HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
-                    end
-                end
-            else
-                HState.FailStreak = 0 
+            task.wait(2)
             end
-
         else 
-            if HState.CurrentMode ~= "NORM" then 
-                HState.CurrentMode = "NORM" 
-            end
-
             CancelFishingInputs()
             task.wait(0.2)
             local status, result = ChargeFishingRod()
