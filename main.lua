@@ -654,7 +654,7 @@ while Temporary["Running"] do
                     
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
-                    if HState.CurrentDelay > 2.5 then
+                    if HState.CurrentDelay > 1.9 then
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
