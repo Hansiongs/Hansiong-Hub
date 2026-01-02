@@ -583,11 +583,10 @@ while Temporary["Running"] do
                 task.wait(0.1)
                 Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
                 Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
-                task.wait(1)
+                task.wait(1.2)
                 Net["RE/FishingCompleted"]:FireServer()
                 task.wait(0.3)
             end)
-            task.wait(1.8)
         else 
             CancelFishingInputs()
             task.wait(0.2)
