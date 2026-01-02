@@ -8,7 +8,7 @@ local Owned = {
 local RunService = game:GetService("RunService")
 
 local AlgorithmConfig = {
-    FAST = { StartDelay = 1.4, AddStep = 0.05, FailThreshold = 3, SuccessThreshold = 4 },
+    FAST = { StartDelay = 1.45, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
 }
 
 local function SmartWait(seconds)
@@ -648,10 +648,6 @@ while Temporary["Running"] do
                 HState.SuccessStreak = 0 
                 HState.FailStreak = HState.FailStreak + 1
                 if HState.FailStreak >= HState.ActiveFailThresh then
-                    if HState.Lock then
-                        HState.Lock = false
-                    end
-                    
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
                     if HState.CurrentDelay > 2 then
