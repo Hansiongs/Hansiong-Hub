@@ -7,16 +7,6 @@ local Owned = {
 
 local RunService = game:GetService("RunService")
 
-local function SmartWait(seconds)
-    local start = os.clock()
-    local target = start + seconds
-    while target - os.clock() > 0.01 do
-        RunService.Heartbeat:Wait()
-    end
-    while os.clock() < target do
-    end
-end
-
 local AlgorithmConfig = {
     FAST = { StartDelay = 1.5, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
 }
