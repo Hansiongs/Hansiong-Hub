@@ -8,7 +8,7 @@ local Owned = {
 local RunService = game:GetService("RunService")
 
 local AlgorithmConfig = {
-    FAST = { StartDelay = 1.45, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
+    FAST = { StartDelay = 1.45, AddStep = 0.05, FailThreshold = 3, SuccessThreshold = 4 },
 }
 
 local HState = {
@@ -640,7 +640,7 @@ while Temporary["Running"] do
                 if HState.FailStreak >= HState.ActiveFailThresh then
                     HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
                     HState.FailStreak = 0 
-                    if HState.CurrentDelay > 2 then
+                    if HState.CurrentDelay > 2.2 then
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
