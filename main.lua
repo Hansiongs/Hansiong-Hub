@@ -8,7 +8,7 @@ local Owned = {
 local RunService = game:GetService("RunService")
 
 local AlgorithmConfig = {
-    FAST = { StartDelay = 1.45, AddStep = 0.05, FailThreshold = 3, SuccessThreshold = 4 },
+    FAST = { StartDelay = 1.45, AddStep = 0.05, FailThreshold = 2, SuccessThreshold = 3 },
 }
 
 local HState = {
