@@ -1,9 +1,4 @@
 local Settings = getgenv().Settings
-
-getgenv().AutoDelay = 1
-getgenv().LastCatch = false
-getgenv().FailCount = 0
-
 local Owned = {
     ["Rods"] = {},
     ["Baits"] = {},
@@ -11,6 +6,22 @@ local Owned = {
 }
 
 local RunService = game:GetService("RunService")
+
+local AlgorithmConfig = {
+    FAST = { StartDelay = 1.45, AddStep = 0.03, FailThreshold = 3, SuccessThreshold = 4 },
+}
+
+local HState = {
+    CurrentMode = "NORM",
+    CurrentDelay = 0.6,
+    ActiveStep = 0.1,
+    ActiveFailThresh = 3,
+    ActiveSuccessThresh = 3,
+    Lock = false,
+    SuccessStreak = 0,
+    FailStreak = 0,
+    Got = false
+}
 
 local RodDelays = {
 	[1] = 0.164,
@@ -92,18 +103,6 @@ for _, folder in pairs(Packages:GetChildren()) do
     end
 end
 
-local function disable(gui)
-    if gui:IsA("ScreenGui") then
-        local name = gui.Name:lower()
-        if name:find("small notification") or name:find("cutscene") then
-            gui.Enabled = false
-            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-                if gui.Enabled then gui.Enabled = false end
-            end)
-        end
-    end
-end
-
 function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
 function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
 function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
@@ -121,9 +120,6 @@ function PurchaseWeatherEvent(name) return Net["RF/PurchaseWeatherEvent"]:Invoke
 if not Net then 
     return
 end
-
-for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
-PlayerGui.ChildAdded:Connect(disable)
 
 function GetCoin()
     return DataReplion:Get("Coins")
@@ -392,19 +388,26 @@ function LowSetting()
 end
 
 Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
-    getgenv().LastCatch = true
-    getgenv().FailCount = 0
-
-    if Settings["FishingMode"] == "Fast" and getgenv().AutoDelay > 0.85 then
-        getgenv().AutoDelay = getgenv().AutoDelay - 0.05
+    HState.Got = true
+    HState.FailStreak = 0 
+    
+    if not HState.Lock then
+        HState.SuccessStreak = HState.SuccessStreak + 1
+        if HState.SuccessStreak >= HState.ActiveSuccessThresh then
+            HState.Lock = true
+            HState.CurrentDelay = math.floor((HState.CurrentDelay - 0.02) * 1000)/1000 
+            if HState.CurrentDelay < 0.5 then HState.CurrentDelay = 0.5 end -- Safety limit
+        end
     end
-
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
     local fishInfo = DBFish[tostring(msg1)]
-    if fishInfo and (fishInfo.Tier == 7 or Settings["FavoriteFish"][tostring(msg1)]) then
-        FavoriteItem(msg3.InventoryItem.UUID)
+    if fishInfo then
+        local Tier = fishInfo.Tier
+        if Tier == 7 or Settings["FavoriteFish"][tostring(msg1)] then
+            FavoriteItem(msg3.InventoryItem.UUID)
+        end
     end
 end)
 
@@ -428,6 +431,20 @@ game:GetService("RunService").Heartbeat:Connect(function(dt)
     end
 end)
 
+local function disable(gui)
+    if gui:IsA("ScreenGui") then
+        local name = gui.Name:lower()
+        if name:find("small notification") or name:find("cutscene") then
+            gui.Enabled = false
+            gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if gui.Enabled then gui.Enabled = false end
+            end)
+        end
+    end
+end
+
+for _, v in pairs(PlayerGui:GetChildren()) do disable(v) end
+PlayerGui.ChildAdded:Connect(disable)
 
 LowSetting()
 GetRods()
@@ -587,32 +604,55 @@ while Temporary["Running"] do
             end
         end
 
-if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
-            getgenv().LastCatch = false
-            local currentCycleDelay = getgenv().AutoDelay
-
-            task.spawn(function()
-                pcall(function()
-                    local now = workspace:GetServerTimeNow()
-                    Net["RF/CancelFishingInputs"]:InvokeServer()
-                    task.wait(0.1)
-                    Net["RF/ChargeFishingRod"]:InvokeServer(now) 
-                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), now)
-                    task.wait(currentCycleDelay)
-                    Net["RE/FishingCompleted"]:FireServer()
-                    task.wait(0.4)
-                end)
-            end)
-            if not getgenv().LastCatch then
-                getgenv().FailCount = getgenv().FailCount + 1
-                if getgenv().FailCount >= 3 then
-                    getgenv().AutoDelay = getgenv().AutoDelay + 0.05
-                    getgenv().FailCount = 0
-                    if getgenv().AutoDelay > 2.0 then getgenv().AutoDelay = 1.0 end
-                end
+        if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
+            if HState.CurrentMode ~= "FAST" then
+                HState.CurrentMode = "FAST"
+                local Cfg = AlgorithmConfig.FAST
+                HState.CurrentDelay = Cfg.StartDelay
+                HState.ActiveStep = Cfg.AddStep
+                HState.ActiveFailThresh = Cfg.FailThreshold
+                HState.ActiveSuccessThresh = Cfg.SuccessThreshold
+                HState.Lock = false
+                HState.FailStreak = 0
+                HState.SuccessStreak = 0
+                task.wait(0.2)
             end
 
-        else
+            HState.Got = false
+            local timex = workspace:GetServerTimeNow() 
+
+            task.spawn(function()
+                local success, err = pcall(function()
+                    Net["RF/CancelFishingInputs"]:InvokeServer()
+                    task.wait(0.1) 
+                    Net["RF/ChargeFishingRod"]:InvokeServer(timex) 
+                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), timex)
+                end)
+            end)
+
+            task.wait(HState.CurrentDelay)
+            Net["RE/FishingCompleted"]:FireServer()
+            task.wait(0.4) 
+
+            if not HState.Got then
+                HState.SuccessStreak = 0 
+                HState.FailStreak = HState.FailStreak + 1
+                if HState.FailStreak >= HState.ActiveFailThresh then
+                    HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
+                    HState.FailStreak = 0 
+                    if HState.CurrentDelay > 2 then
+                        HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
+                    end
+                end
+            else
+                HState.FailStreak = 0 
+            end
+
+        else 
+            if HState.CurrentMode ~= "NORM" then 
+                HState.CurrentMode = "NORM" 
+            end
+
             CancelFishingInputs()
             task.wait(0.2)
             local status, result = ChargeFishingRod()
@@ -626,10 +666,11 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
                     task.wait(0.3)
                 end
             else
+                continue
             end
         end
     else
         Temporary["FishCatch"] = 99999
         task.wait(0.3)
     end
-end 
+end
