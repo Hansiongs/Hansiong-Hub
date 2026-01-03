@@ -106,8 +106,8 @@ end
 
 function EquipToolFromHotbar(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
 function UnequipToolFromHotbar(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
-function ChargeFishingRod(t) return Net["RF/ChargeFishingRod"]:InvokeServer(t or workspace:GetServerTimeNow()) end
-function RequestFishingMinigameStarted(t) return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), t or workspace:GetServerTimeNow()) end
+function ChargeFishingRod() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
+function RequestFishingMinigameStarted() return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), workspace:GetServerTimeNow()) end
 function CancelFishingInputs() return Net["RF/CancelFishingInputs"]:InvokeServer() end
 function SellAllItems() return Net["RF/SellAllItems"]:InvokeServer() end
 function FavoriteItem(Uid) return Net["RE/FavoriteItem"]:FireServer(Uid) end
@@ -594,16 +594,15 @@ if Temporary["BestRodId"] == 257 and Settings["FishingMode"] == "Fast" then
             task.spawn(function()
                 pcall(function()
                     local now = workspace:GetServerTimeNow()
-                    CancelFishingInputs()
+                    Net["RF/CancelFishingInputs"]:InvokeServer()
                     task.wait(0.1)
-                    ChargeFishingRod(now)
-                    RequestFishingMinigameStarted(now)
+                    Net["RF/ChargeFishingRod"]:InvokeServer(now) 
+                    Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), now)
                     task.wait(currentCycleDelay)
                     Net["RE/FishingCompleted"]:FireServer()
-                    task.wait(0.3)
+                    task.wait(0.4)
                 end)
             end)
-            task.wait(0.2)
             if not getgenv().LastCatch then
                 getgenv().FailCount = getgenv().FailCount + 1
                 if getgenv().FailCount >= 3 then
