@@ -391,14 +391,23 @@ Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2,
     HState.Got = true
     HState.FailStreak = 0 
     
-    if not HState.Lock then
+    -- LOGIC BARU: Hapus sistem Lock, ganti dengan Reset Streak
+    if Settings["FishingMode"] == "Fast" then
         HState.SuccessStreak = HState.SuccessStreak + 1
+        
+        -- Jika sukses berturut-turut melebihi threshold
         if HState.SuccessStreak >= HState.ActiveSuccessThresh then
-            HState.Lock = true
-            HState.CurrentDelay = math.floor((HState.CurrentDelay - 0.02) * 1000)/1000 
-            if HState.CurrentDelay < 0.5 then HState.CurrentDelay = 0.5 end -- Safety limit
+            -- Percepat delay (kurangi angka)
+            HState.CurrentDelay = HState.CurrentDelay - 0.05 
+            
+            -- Batas aman biar ga terlalu ngebut (bisa disesuaikan, misal 0.5 atau 0.4)
+            if HState.CurrentDelay < 0.5 then HState.CurrentDelay = 0.5 end 
+            
+            -- Reset streak jadi 0, supaya dia harus membuktikan stabil dulu baru ngebut lagi
+            HState.SuccessStreak = 0 
         end
     end
+
     Temporary["FishCatch"] = Temporary["FishCatch"] + 1
     Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
     
@@ -637,15 +646,18 @@ while Temporary["Running"] do
             if not HState.Got then
                 HState.SuccessStreak = 0 
                 HState.FailStreak = HState.FailStreak + 1
+                
+                -- Jika gagal berturut-turut
                 if HState.FailStreak >= HState.ActiveFailThresh then
-                    HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep
+                    HState.CurrentDelay = HState.CurrentDelay + HState.ActiveStep -- Perlambat script
                     HState.FailStreak = 0 
+                    
+                    -- Reset ke awal kalau delay sudah terlalu lambat (dianggap lag parah)
                     if HState.CurrentDelay > 2.2 then
                         HState.CurrentDelay = AlgorithmConfig.FAST.StartDelay
                     end
                 end
             else
-                HState.FailStreak = 0 
             end
 
         else 
