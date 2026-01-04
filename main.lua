@@ -594,7 +594,7 @@ while Temporary["Running"] do
             end
 
             if not contains(Settings["Quest"], "DeepSea") and not contains(Settings["Quest"], "Jungle2025") and not Settings["Location"] then
-                Settings["Location"] = "Crater Island"
+                Settings["Location"] = "Kohana"
             end
 
             if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
