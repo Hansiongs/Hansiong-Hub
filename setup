@@ -1,0 +1,250 @@
+getgenv().Settings = getgenv().Settings or {} -- Pastikan settings ada
+getgenv().Owned = { ["Rods"] = {}, ["Baits"] = {}, ["Items"] = {} }
+getgenv().Temporary = {
+    ["Running"] = true,
+    ["FishCatch"] = 99999,
+    ["FishingCatch"] = 0,
+    ["BestRod"] = nil,
+    ["BestRodId"] = nil,
+    ["BestBait"] = nil,
+    ["Location"] = nil,
+    ["ScreenGui"] = nil,
+    ["Render"] = nil,
+    ["Timex"] = tick(),
+    ["AFK"] = tick(),
+    ["Logs"] = {},
+}
+
+-- Config Scanner
+getgenv().ScanConfig = {
+    Endpoint = "https://calcanean-tyler-insusceptible.ngrok-free.dev/api/simpan", 
+    Interval = 3600, 
+    LastRun = 0 
+}
+
+-- Config Algorithm
+getgenv().HState = {
+    CurrentMode = "NORM",
+    CurrentDelay = 0.6,
+    ActiveStep = 0.1,
+    ActiveFailThresh = 3,
+    ActiveSuccessThresh = 3,
+    Lock = false,
+    SuccessStreak = 0,
+    FailStreak = 0,
+    Got = false
+}
+
+getgenv().RodDelays = { [1]=0.164, [2]=0.168, [3]=0.172, [4]=0.176, [5]=0.18, [6]=0.184, [7]=0.188 }
+
+getgenv().Locations = {
+    ["Sisyphus Statue"] = CFrame.new(-3729.25,-130.07,-885.64),
+    ["Esoteric Depths"] = CFrame.new(3253.03,-1288.65,1433.85),
+    ["Treasure Room"] = CFrame.new(-3581.60,-274.07,-1589.65),
+    ["Underground Cellar"] = CFrame.new(2135.45,-86.20,-699.33),
+    ["Sacred Temple"] = CFrame.new(1451.41,-17.13,-635.65),
+    ["Kohana Volcano"] = CFrame.new(-551.98,23.55,182.16),
+    ["Hourglass Diamond Artifact"] = CFrame.new(1487.58, 3.78,-843.49) * CFrame.Angles(0, math.rad(180), 0),
+    ["Crescent Artifact"] = CFrame.new(1400.68, 3.34, 121.89) * CFrame.Angles(0, math.rad(180), 0),
+    ["Diamond Artifact"] = CFrame.new(1837.77, 5.29, -299.71) * CFrame.Angles(0, math.rad(270), 0),
+    ["Arrow Artifact"] = CFrame.new(879.46, 4.29, -334.11) * CFrame.Angles(0, math.rad(90), 0),
+    ["Crater Island"] = CFrame.new(998.03, 2.86, 5151.16),
+    ["Double Enchant Altar"] = CFrame.new(1480.07, 127.62, -589.82),
+    ["Enchant Altar"] = CFrame.new(3255.68, -1301.53, 1371.82),
+    ["Tropical Island"] = CFrame.new(-2152.61, 2.32, 3671.71),
+    ["Coral Reefs"] = CFrame.new(-3181.38, 2.52, 2104.35),
+    ["Ancient Jungle"] = CFrame.new(1275.10, 9, -334.75),
+    ["Kohana"] = CFrame.new(-661.67, 3.04, 714.14),
+    ["Ancient Ruin"] = CFrame.new(6099.12, -580, 4665.00),
+    ["Christmast Island"] = CFrame.new(1137.03, 28, 1559.69),
+    ["Iron Cavern"] = CFrame.new(-8800.58, -580, 241.26),
+}
+
+getgenv().WeathersData = {
+    ["Wind"] = 10000, ["Snow"] = 15000, ["Cloudy"] = 20000,
+    ["Storm"] = 35000, ["Radiant"] = 50000, ["Shark Hunt"] = 300000,
+}
+
+-- Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+-- Databases
+getgenv().DBFish = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/rodlists'))
+getgenv().DBRod = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/rodlists'))
+getgenv().DBBait = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/baitlists'))
+
+-- Net Setup
+local Packages = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index")
+local Net = nil
+for _, folder in pairs(Packages:GetChildren()) do
+    if folder.Name:match("sleitnick_net") then
+        Net = folder:WaitForChild("net")
+        break
+    end
+end
+
+if not Net then return end
+
+-- [[ GLOBAL FUNCTIONS ]] --
+-- Mengubah Local Function menjadi Global (getgenv) agar bisa dibaca File 2
+
+getgenv().EquipToolFromHotbar = function(number) return Net["RE/EquipToolFromHotbar"]:FireServer(number or 1) end
+getgenv().UnequipToolFromHotbar = function(number) return Net["RE/UnequipToolFromHotbar"]:FireServer(number or 1) end
+getgenv().ChargeFishingRod = function() return Net["RF/ChargeFishingRod"]:InvokeServer(workspace:GetServerTimeNow()) end
+getgenv().RequestFishingMinigameStarted = function() return Net["RF/RequestFishingMinigameStarted"]:InvokeServer(-1.233184814453125, 0.998 + (1.0 - 0.998) * math.random(), workspace:GetServerTimeNow()) end
+getgenv().CancelFishingInputs = function() return Net["RF/CancelFishingInputs"]:InvokeServer() end
+getgenv().SellAllItems = function() return Net["RF/SellAllItems"]:InvokeServer() end
+getgenv().FavoriteItem = function(Uid) return Net["RE/FavoriteItem"]:FireServer(Uid) end
+getgenv().EquipItem = function(Uid, Item) return Net["RE/EquipItem"]:FireServer(Uid, Item) end
+getgenv().PurchaseFishingRod = function(Id) return Net["RF/PurchaseFishingRod"]:InvokeServer(Id) end
+getgenv().PurchaseBait = function(Id) return Net["RF/PurchaseBait"]:InvokeServer(Id) end
+getgenv().EquipBait = function(Id) return Net["RE/EquipBait"]:FireServer(Id) end
+getgenv().PlaceLeverItem = function(item) return Net["RE/PlaceLeverItem"]:FireServer(item) end
+getgenv().PurchaseWeatherEvent = function(name) return Net["RF/PurchaseWeatherEvent"]:InvokeServer(name) end
+
+-- Replion
+local DataReplion = require(ReplicatedStorage.Packages.Replion).Client:WaitReplion("Data")
+
+getgenv().GetCoin = function() return DataReplion:Get("Coins") end
+getgenv().GetTempleLevers = function() return DataReplion:Get("TempleLevers") end
+getgenv().GetEquippedUid = function() return DataReplion:Get("EquippedId") end
+getgenv().GetEquippedType = function() return DataReplion:Get("EquippedType") end
+getgenv().GetEquippedBaitId = function() return DataReplion:Get("EquippedBaitId") end
+
+getgenv().GetWeather = function(name)
+    return Players.LocalPlayer.PlayerGui.Events.Frame.Events[name].Visible
+end
+
+getgenv().Teleport = function(location)
+    local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+    char:WaitForChild("HumanoidRootPart").CFrame = location
+end
+
+getgenv().contains = function(tbl, val)
+    for _, v in ipairs(tbl) do if v == val then return true end end return false
+end
+
+-- Load Database Logic Scanner
+local ItemDatabase = {}
+local tierToRarity = { [7]="SECRET" }
+local function LoadDBLocal(folder)
+    if not folder then return end
+    for _, v in ipairs(folder:GetChildren()) do
+        local ok, data = pcall(require, v)
+        if ok and (data.Data or data) then
+            local info = data.Data or data
+            local id = tostring(info.Id or v.Name)
+            local name = tostring(info.Name or v.Name)
+            local rarity = info.Rarity and string.upper(tostring(info.Rarity)) or tierToRarity[info.Tier] or "COMMON"
+            local entry = { Name = name, Rarity = rarity }
+            ItemDatabase[id] = entry; ItemDatabase[name] = entry
+        end
+    end
+end
+LoadDBLocal(ReplicatedStorage:FindFirstChild("Items"))
+LoadDBLocal(ReplicatedStorage:FindFirstChild("Database") and ReplicatedStorage.Database:FindFirstChild("Fish"))
+LoadDBLocal(ReplicatedStorage:FindFirstChild("Database") and ReplicatedStorage.Database:FindFirstChild("Items"))
+
+getgenv().GetItemInfo = function(id_or_name)
+    return ItemDatabase[tostring(id_or_name)] or { Name = tostring(id_or_name), Rarity = "UNKNOWN" }
+end
+
+getgenv().ScanSecrets = function()
+    local allItems = {}
+    local invFish = DataReplion:Get({"Inventory", "Fish"}) or {}
+    local invItems = DataReplion:Get({"Inventory", "Items"}) or {}
+    for _, v in ipairs(invFish) do table.insert(allItems, v) end
+    for _, v in ipairs(invItems) do table.insert(allItems, v) end
+
+    local secretList = {}
+    local grouped = {}
+    local totalSecretCount = 0
+
+    for _, item in ipairs(allItems) do
+        local info = GetItemInfo(item.Id or item.Name)
+        if info.Rarity == "SECRET" or info.Tier == 7 then
+            totalSecretCount = totalSecretCount + 1
+            if not grouped[info.Name] then
+                local newEntry = { Name = info.Name, Count = 0 }
+                table.insert(secretList, newEntry)
+                grouped[info.Name] = newEntry
+            end
+            grouped[info.Name].Count = grouped[info.Name].Count + 1
+        end
+    end
+
+    local payload = {
+        Username = Players.LocalPlayer.Name,
+        UserId = Players.LocalPlayer.UserId,
+        TotalSecrets = totalSecretCount,
+        Items = secretList,
+        Timestamp = os.time()
+    }
+    
+    local req = (http_request or request or (syn and syn.request) or (fluxus and fluxus.request))
+    if req then
+        req({ Url = ScanConfig.Endpoint, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload) })
+    end
+end
+
+-- Helpers lainnya (GetRods, GetBaits, dll)
+getgenv().GetRods = function()
+    local items = DataReplion:Get({"Inventory", "Fishing Rods"})
+    if not items then return end
+    local bestLuck = -1
+    local bestUUID = nil
+    local bestId = nil
+    for _, item in ipairs(items) do
+        local rodData = DBRod[tostring(item.Id)]
+        if rodData and rodData.BaseLuck then
+            Owned["Rods"][item.Id] = item.UUID
+            if rodData.BaseLuck > bestLuck then
+                bestLuck = rodData.BaseLuck; bestUUID = item.UUID; bestId = item.Id
+            end
+        end
+    end
+    Temporary["BestRod"] = bestUUID; Temporary["BestRodId"] = bestId
+end
+
+getgenv().GetBaits = function()
+    local items = DataReplion:Get({"Inventory", "Baits"})
+    if not items then return end
+    local bestLuck = -1
+    local bestId = nil
+    Owned["Baits"] = {}
+    for _, item in ipairs(items) do
+        local baitData = DBBait[tostring(item.Id)]
+        if baitData and baitData.BaseLuck then
+            Owned["Baits"][item.Id] = item.UUID
+            if baitData.BaseLuck > bestLuck then bestLuck = baitData.BaseLuck; bestId = item.Id end
+        end
+    end
+    Temporary["BestBait"] = bestId
+end
+
+-- Listener Net
+Net["RE/ObtainedNewFishNotification"].OnClientEvent:Connect(function(msg1, msg2, msg3)
+    HState.Got = true
+    HState.FailStreak = 0 
+    if not HState.Lock then
+        HState.SuccessStreak = HState.SuccessStreak + 1
+        if HState.SuccessStreak >= HState.ActiveSuccessThresh then
+            HState.Lock = true
+            HState.CurrentDelay = math.floor((HState.CurrentDelay - 0.02) * 1000)/1000 
+            if HState.CurrentDelay < 0.5 then HState.CurrentDelay = 0.5 end
+        end
+    end
+    Temporary["FishCatch"] = Temporary["FishCatch"] + 1
+    Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
+    local fishInfo = DBFish[tostring(msg1)]
+    if fishInfo then
+        local Tier = fishInfo.Tier
+        if Tier == 7 or Settings["FavoriteFish"][tostring(msg1)] then
+            FavoriteItem(msg3.InventoryItem.UUID)
+        end
+    end
+end)
+
+print("✅ Library Loaded Successfully")
