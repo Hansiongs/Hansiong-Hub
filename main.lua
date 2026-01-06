@@ -22,6 +22,7 @@ local FavoriteConfig = {
     },
     WhitelistVariant = {
         ["Gemstone"] = true,
+        ["Stone"] = true,
     }
 }
 
