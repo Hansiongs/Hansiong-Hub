@@ -224,7 +224,7 @@ function Teleport(location)
     local Root = Character:WaitForChild("HumanoidRootPart")
     Root.CFrame = location
 
-    if Settings["Location"] = "Ocean" then
+    if Settings["Location"] == "Ocean" then
         Root.Anchored = true
     else
         Root.Anchored = false
