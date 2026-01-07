@@ -224,15 +224,6 @@ function Teleport(location)
     Character:WaitForChild("HumanoidRootPart").CFrame = location
 end
 
-function TeleportToOcean(location)
-    Character:WaitForChild("HumanoidRootPart").CFrame = location
-    task.wait(0.5)
-    Character:WaitForChild("HumanoidRootPart").AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    Character:WaitForChild("HumanoidRootPart").AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    Character:WaitForChild("HumanoidRootPart").Anchored = true
-end
-
-
 function GetBaits()
     local items = DataReplion:Get({"Inventory", "Baits"})
     if not items then return end
@@ -635,7 +626,11 @@ while Temporary["Running"] do
 
             if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
                 if Settings["Location"] == "Ocean" then
-                    TeleportToOcean(Locations[Settings["Location"]])
+                    Teleport(Locations[Settings["Location"]])
+                    task.wait(0.5)
+                    Character:WaitForChild("HumanoidRootPart").AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    Character:WaitForChild("HumanoidRootPart").AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                    Character:WaitForChild("HumanoidRootPart").Anchored = true
                 else
                     Teleport(Locations[Settings["Location"]])
                 end
