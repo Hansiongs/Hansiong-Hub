@@ -68,7 +68,7 @@ local Locations = {
     ["Christmast Island"] = CFrame.new(1137.03, 28, 1559.69),
     ["Iron Cavern"] = CFrame.new(-8800.58, -580, 241.26),
     ["Tropical Grove"] = CFrame.new(-2154.49,7,3670.67),
-    ["Ocean"] = CFrame.new(43.05, 1.5, 2327.63),
+    ["Ocean"] = CFrame.new(43.05, 5, 2327.63),
 }
 
 local WeathersData = {
@@ -226,6 +226,7 @@ end
 
 function TeleportToOcean(location)
     Character:WaitForChild("HumanoidRootPart").CFrame = location
+    task.wait(0.5)
     Character:WaitForChild("HumanoidRootPart").AssemblyLinearVelocity = Vector3.new(0, 0, 0)
     Character:WaitForChild("HumanoidRootPart").AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     Character:WaitForChild("HumanoidRootPart").Anchored = true
