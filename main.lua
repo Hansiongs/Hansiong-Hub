@@ -501,7 +501,7 @@ task.wait(3)
 
 Teleport(Locations["Underground Cellar"])
 Temporary["Location"] = "Underground Cellar"
-task.wait(10)
+task.wait(3)
 
 task.spawn(function()
     task.wait(60) 
@@ -633,6 +633,7 @@ while Temporary["Running"] do
             end
 
             if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
+                task.wait(3)
                 Teleport(Locations[Settings["Location"]])
                 Temporary["Location"] = Settings["Location"]
                 task.wait(5)
