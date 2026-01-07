@@ -221,16 +221,12 @@ function GetEquippedBaitId()
 end
 
 function Teleport(location)
-    local Root = Character:WaitForChild("HumanoidRootPart")
-    Root.CFrame = location
-    Root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    Root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+    Character:WaitForChild("HumanoidRootPart").CFrame = location
 
-    if Settings["Location"] == "Ocean"
-     then
-        Root.Anchored = true
+    if location == "Ocean" or location == Locations["Ocean"] then
+        Character:WaitForChild("HumanoidRootPart").Anchored = true
     else
-        Root.Anchored = false
+        Character:WaitForChild("HumanoidRootPart").Anchored = false
     end
 end
 
