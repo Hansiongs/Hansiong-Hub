@@ -631,7 +631,7 @@ while Temporary["Running"] do
             end
 
             if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
-                if Settings["Location"] === "Ocean" then
+                if Settings["Location"] == "Ocean" then
                     TeleportToOcean(Locations[Settings["Location"]])
                 else
                     Teleport(Locations[Settings["Location"]])
