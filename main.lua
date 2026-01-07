@@ -224,7 +224,7 @@ function Teleport(location)
     local Root = Character:WaitForChild("HumanoidRootPart")
     Root.CFrame = location
 
-    if location == Locations["Ocean"] then
+    if Locations["Ocean"] then
         Root.Anchored = true
     else
         Root.Anchored = false
@@ -633,7 +633,6 @@ while Temporary["Running"] do
             end
 
             if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
-                task.wait(3)
                 Teleport(Locations[Settings["Location"]])
                 Temporary["Location"] = Settings["Location"]
                 task.wait(5)
