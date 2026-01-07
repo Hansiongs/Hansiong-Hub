@@ -223,7 +223,7 @@ end
 function Teleport(location)
     Character:WaitForChild("HumanoidRootPart").CFrame = location
 
-    if location == "Ocean" or location == Locations["Ocean"] then
+    if location == Locations["Ocean"] then
         Character:WaitForChild("HumanoidRootPart").Anchored = true
     else
         Character:WaitForChild("HumanoidRootPart").Anchored = false
