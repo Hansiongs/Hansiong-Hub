@@ -68,7 +68,7 @@ local Locations = {
     ["Christmast Island"] = CFrame.new(1137.03, 28, 1559.69),
     ["Iron Cavern"] = CFrame.new(-8800.58, -580, 241.26),
     ["Tropical Grove"] = CFrame.new(-2154.49,7,3670.67),
-    ["Ocean"] = CFrame.new(43.05, 1, 2327.63),
+    ["Ocean"] = CFrame.new(43.05, 1.5, 2327.63),
 }
 
 local WeathersData = {
@@ -223,9 +223,12 @@ end
 function Teleport(location)
     local Root = Character:WaitForChild("HumanoidRootPart")
     Root.CFrame = location
-    Root.Anchored = true
-    Root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    Root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+
+    if location == Locations["Ocean"] then
+        Root.Anchored = true
+    else
+        Root.Anchored = false
+    end
 end
 
 
