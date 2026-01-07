@@ -220,17 +220,21 @@ function GetEquippedBaitId()
     return DataReplion:Get("EquippedBaitId")
 end
 
-function Teleport(location)
-    local Root = Character:WaitForChild("HumanoidRootPart")
-    Root.CFrame = location
-
-    if Settings["Location"] == "Ocean" then
-        Root.Anchored = true
+function Teleport(locationName)
+    local Char = Player.Character or Player.CharacterAdded:Wait()
+    local Root = Char:FindFirstChild("HumanoidRootPart")
+    
+    if Root and Locations[locationName] then
+        Root.CFrame = Locations[locationName]
+        if locationName == "Ocean" then
+            Root.Anchored = true
+        else
+            Root.Anchored = false
+        end
     else
-        Root.Anchored = false
+        warn("Lokasi tidak ditemukan atau RootPart hilang: " .. tostring(locationName))
     end
 end
-
 
 function GetBaits()
     local items = DataReplion:Get({"Inventory", "Baits"})
