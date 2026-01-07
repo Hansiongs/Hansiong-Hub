@@ -222,12 +222,11 @@ end
 
 function Teleport(location)
     Character:WaitForChild("HumanoidRootPart").CFrame = location
+end
 
-    if location == Locations["Ocean"] then
-        Character:WaitForChild("HumanoidRootPart").Anchored = true
-    else
-        Character:WaitForChild("HumanoidRootPart").Anchored = false
-    end
+function TeleportToOcean(location)
+    Character:WaitForChild("HumanoidRootPart").CFrame = location
+    Character:WaitForChild("HumanoidRootPart").Anchored = true
 end
 
 
@@ -632,7 +631,11 @@ while Temporary["Running"] do
             end
 
             if Temporary["Location"] ~= Settings["Location"] and Settings["Location"] then
-                Teleport(Locations[Settings["Location"]])
+                if Settings["Location"] === "Ocean" then
+                    TeleportToOcean(Locations[Settings["Location"]])
+                else
+                    Teleport(Locations[Settings["Location"]])
+                end
                 Temporary["Location"] = Settings["Location"]
                 task.wait(5)
             end
