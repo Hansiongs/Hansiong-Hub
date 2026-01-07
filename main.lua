@@ -226,6 +226,8 @@ end
 
 function TeleportToOcean(location)
     Character:WaitForChild("HumanoidRootPart").CFrame = location
+    Character:WaitForChild("HumanoidRootPart").AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    Character:WaitForChild("HumanoidRootPart").AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     Character:WaitForChild("HumanoidRootPart").Anchored = true
 end
 
