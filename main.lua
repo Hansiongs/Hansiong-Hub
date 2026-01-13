@@ -126,6 +126,8 @@ function SpawnLuckTotem()
         if tonumber(item.Id) == 1 then
             if item.UUID then
                 Net["RE/SpawnTotem"]:FireServer(item.UUID)
+                task.wait(2)
+                EquipToolFromHotbar()
                 break 
             end
         end
