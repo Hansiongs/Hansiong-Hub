@@ -579,7 +579,6 @@ while Temporary["Running"] do
                 task.wait(1)
             end
 
-            task.wait(2)
             SpawnLuckTotem()
             task.wait(2)
 
