@@ -435,6 +435,8 @@ local function GetItemInfo(id_or_name)
 end
 
 local function ScanSecrets()
+    pcall(GetRods) 
+    
     local allItems = {}
     local invFish = DataReplion:Get({"Inventory", "Fish"}) or {}
     local invItems = DataReplion:Get({"Inventory", "Items"}) or {}
@@ -448,7 +450,6 @@ local function ScanSecrets()
 
     for _, item in ipairs(allItems) do
         local info = GetItemInfo(item.Id or item.Name)
-
         local finalName = info.Name 
         local isTarget = false
 
@@ -466,7 +467,6 @@ local function ScanSecrets()
 
         if isTarget then
             totalSecretCount = totalSecretCount + 1
-
             if not grouped[finalName] then
                 local newEntry = { Name = finalName, Count = 0 }
                 table.insert(secretList, newEntry)
@@ -478,22 +478,24 @@ local function ScanSecrets()
 
     local CurrentTotal = Temporary["FishingCatch"] or 0
     local StatusString = "Offline"
-
     if CurrentTotal > LastCatchCount then
         StatusString = "Online"
     end
     LastCatchCount = CurrentTotal
     
     local rodName = "None"
-    if Temporary["BestRodId"] then
+    
+    if Temporary["BestRodId"] and DBRod then
         local rodData = DBRod[tostring(Temporary["BestRodId"])]
         if rodData then
             rodName = rodData.Name
+        else
+            rodName = "Unknown ID: " .. tostring(Temporary["BestRodId"])
         end
     end
     
-    local enc1 = Temporary["Enchant1"] or "None"
-    local enc2 = Temporary["Enchant2"] or "None"
+    local enc1 = Temporary["Enchant1"] or "-"
+    local enc2 = Temporary["Enchant2"] or "-"
 
     local payload = {
         Username = Player.Name,
@@ -519,7 +521,7 @@ local function ScanSecrets()
             Body = HttpService:JSONEncode(payload)
         })
     else
-        warn("⚠️ HTTP Request tidak support di executor ini.")
+        warn("⚠️ HTTP Request tidak support.")
     end
 end
 
