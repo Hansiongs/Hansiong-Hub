@@ -206,6 +206,11 @@ function GetEquippedUid() return DataReplion:Get("EquippedId") end
 function GetEquippedType() return DataReplion:Get("EquippedType") end
 function GetEquippedBaitId() return DataReplion:Get("EquippedBaitId") end
 function Teleport(location)
+    if RootPart.Anchored then
+        RootPart.Anchored = false
+    end
+    RootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    RootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     if Character then
         Character:PivotTo(location)
         task.wait(2.5) 
@@ -342,9 +347,11 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-game:GetService("GuiService").ErrorMessageChanged:Connect(function()
-    task.wait(5)
-    TeleportService:Teleport(game.PlaceId, Player)
+pcall(function()
+    game:GetService("GuiService").ErrorMessageChanged:Connect(function()
+        task.wait(5)
+        TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)
+    end)
 end)
 
 LowSetting()
@@ -368,10 +375,30 @@ while Temporary["Running"] do
             task.wait(1)
             if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
 
-            for _, val in pairs(Settings["BuyRods"]) do if DBRod[tostring(val)] and not Owned["Rods"][val] and GetCoin() > DBRod[tostring(val)].Price then PurchaseFishingRod(val); task.wait(1) end end
-            for _, val in pairs(Settings["BuyBaits"]) do if DBBait[tostring(val)] and not Owned["Baits"][val] and GetCoin() > DBBait[tostring(val)].Price then PurchaseBait(val); task.wait(1) end end
-            for _, val in pairs(Settings["Weathers"]) do if WeathersData[val] and GetCoin() > WeathersData[val] and not GetWeather(val) then PurchaseWeatherEvent(val); task.wait(1) end end
+            for _, val in pairs(Settings["BuyRods"]) do 
+                local rodData = DBRod[tostring(val)]
+                if rodData and not Owned["Rods"][tostring(rodData.Id)] and GetCoin() > rodData.Price then 
+                    PurchaseFishingRod(rodData.Id) -- Kirim ID, bukan Nama (val)
+                    task.wait(1) 
+                end 
+            end
 
+            for _, val in pairs(Settings["BuyBaits"]) do 
+                local baitData = DBBait[tostring(val)]
+                if baitData and not Owned["Baits"][tostring(baitData.Id)] and GetCoin() > baitData.Price then 
+                    PurchaseBait(baitData.Id) -- Kirim ID, bukan Nama (val)
+                    task.wait(1) 
+                end 
+            end
+
+            for _, val in pairs(Settings["BuyBaits"]) do 
+                local baitData = DBBait[tostring(val)]
+                if baitData and not Owned["Baits"][tostring(baitData.Id)] and GetCoin() > baitData.Price then 
+                    PurchaseBait(baitData.Id) -- Kirim ID, bukan Nama (val)
+                    task.wait(1) 
+                end 
+            end
+            
             GetRods(); GetBaits()
             if Temporary["BestRod"] and GetEquippedUid() ~= Temporary["BestRod"] then EquipItem(Temporary["BestRod"], "Fishing Rods"); task.wait(1) end
             if Temporary["BestBait"] and GetEquippedBaitId() ~= Temporary["BestBait"] then EquipBait(Temporary["BestBait"]); task.wait(0.2) end
@@ -401,13 +428,7 @@ while Temporary["Running"] do
 
             if not DynamicLocation then DynamicLocation = Settings["DefaultLocation"] end
             if Temporary["Location"] ~= DynamicLocation and DynamicLocation then
-                Teleport(Locations[DynamicLocation])
-                if RootPart.Anchored then
-                    RootPart.Anchored = false
-                end
-                RootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                RootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        
+                Teleport(Locations[DynamicLocation])        
                 Temporary["Location"] = DynamicLocation; task.wait(5)
             end
             ConsumePotions(); SpawnTotem(); task.wait(2)
