@@ -398,7 +398,7 @@ while Temporary["Running"] do
                     task.wait(1) 
                 end 
             end
-            
+
             GetRods(); GetBaits()
             if Temporary["BestRod"] and GetEquippedUid() ~= Temporary["BestRod"] then EquipItem(Temporary["BestRod"], "Fishing Rods"); task.wait(1) end
             if Temporary["BestBait"] and GetEquippedBaitId() ~= Temporary["BestBait"] then EquipBait(Temporary["BestBait"]); task.wait(0.2) end
@@ -424,6 +424,7 @@ while Temporary["Running"] do
                         DynamicLocation = not lev["Diamond Artifact"] and "Diamond Artifact" or (not lev["Crescent Artifact"] and "Crescent Artifact" or "Arrow Artifact")
                     else table.remove(Settings["Quest"], 1); DynamicLocation = nil end
                 end
+                task.wait(20)
             end
 
             if not DynamicLocation then DynamicLocation = Settings["DefaultLocation"] end
