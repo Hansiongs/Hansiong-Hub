@@ -364,6 +364,15 @@ task.spawn(function()
     while Temporary["Running"] do pcall(ScanSecrets); task.wait(900) end
 end)
 
+if Settings["AutoFish"] then
+    local initLoc = Settings["DefaultLocation"]
+    if Locations[initLoc] then
+        Teleport(Locations[initLoc])
+        Temporary["Location"] = DynamicLocation
+        task.wait(10) 
+    end
+end
+
 -- [LOOP UTAMA SAMA PERSIS DENGAN MAIN-V6]
 while Temporary["Running"] do
     if Settings["Render"] ~= Temporary["Render"] then Set3dRenderingEnabled(Settings["Render"]) end
@@ -431,7 +440,7 @@ while Temporary["Running"] do
                 Teleport(Locations[DynamicLocation])        
                 Temporary["Location"] = DynamicLocation; task.wait(5)
             end
-            ConsumePotions(); SpawnTotem(); task.wait(30)
+            ConsumePotions(); SpawnTotem(); task.wait(2)
         end
 
         if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
