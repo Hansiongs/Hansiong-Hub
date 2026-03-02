@@ -37,30 +37,12 @@ local FavoriteConfig = {
     }
 }
 
--- PERBAIKAN: Nilai Delay ditingkatkan sedikit agar tidak terbaca Anomali (BAC-8215)
-local RodDelays = {
-	[1] = 1.64, -- Sebelumnya 0.164 (Terlalu cepat/Anomali)
-	[2] = 1.68,
-	[3] = 1.72,
-	[4] = 1.76,
-	[5] = 1.8,
-	[6] = 1.84,
-	[7] = 1.88,
-}
+local RodDelays = { [1]=1.64, [2]=1.68, [3]=1.72, [4]=1.76, [5]=1.8, [6]=1.84, [7]=1.88 }
 
 local Temporary = {
-    ["Running"] = true,
-    ["FishCatch"] = 99999,
-    ["FishingCatch"] = 0,
-    ["BestRod"] = nil,
-    ["BestRodId"] = nil,
-    ["BestBait"] = nil,
-    ["Location"] = nil,
-    ["ScreenGui"] = nil,
-    ["Render"] = nil,
-    ["Timex"] = tick(),
-    ["AFK"] = tick(),
-    ["Logs"] = {},
+    ["Running"] = true, ["FishCatch"] = 99999, ["FishingCatch"] = 0, ["BestRod"] = nil, 
+    ["BestRodId"] = nil, ["BestBait"] = nil, ["Location"] = nil, ["ScreenGui"] = nil, 
+    ["Render"] = nil, ["Timex"] = tick(), ["AFK"] = tick(), ["Logs"] = {}
 }
 
 local Locations = {
@@ -87,14 +69,7 @@ local Locations = {
     ["Tropical Grove"] = CFrame.new(-2154.49,7,3670.67),
 }
 
-local WeathersData = {
-    ["Wind"] = 10000,
-    ["Snow"] = 15000,
-    ["Cloudy"] = 20000,
-    ["Storm"] = 35000,
-    ["Radiant"] = 50000,
-    ["Shark Hunt"] = 300000,
-}
+local WeathersData = { ["Wind"]=10000, ["Snow"]=15000, ["Cloudy"]=20000, ["Storm"]=35000, ["Radiant"]=50000, ["Shark Hunt"]=300000 }
 
 local Player = game.Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -104,11 +79,10 @@ local DataReplion = require(ReplicatedStorage.Packages.Replion).Client:WaitRepli
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 local PlayerGui = Player:WaitForChild("PlayerGui")
-local Packages = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index")
-local TeleportService = game:GetService("TeleportService")
-local GuiService = game:GetService("GuiService")
-local Camera = workspace.CurrentCamera
+local Packages = ReplicatedStorage:WaitForChild("Packages")
+local Net = require(Packages.Net)
 local FishingController = require(ReplicatedStorage.Controllers.FishingController)
+local Camera = workspace.CurrentCamera
 
 -- Database Imports
 local DBFish = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/fishlists'))
