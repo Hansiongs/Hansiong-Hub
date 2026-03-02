@@ -34,11 +34,23 @@ local FavoriteConfig = {
     },
     WhitelistVariant = {
         ["Gemstone"] = true,
-    }}
+    }
+}
+
+-- PERBAIKAN: Nilai Delay ditingkatkan sedikit agar tidak terbaca Anomali (BAC-8215)
+local RodDelays = {
+	[1] = 1.64, -- Sebelumnya 0.164 (Terlalu cepat/Anomali)
+	[2] = 1.68,
+	[3] = 1.72,
+	[4] = 1.76,
+	[5] = 1.8,
+	[6] = 1.84,
+	[7] = 1.88,
+}
 
 local Temporary = {
     ["Running"] = true,
-    ["FishCatch"] = 0,
+    ["FishCatch"] = 99999,
     ["FishingCatch"] = 0,
     ["BestRod"] = nil,
     ["BestRodId"] = nil,
@@ -93,44 +105,78 @@ local DataReplion = require(ReplicatedStorage.Packages.Replion).Client:WaitRepli
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 local PlayerGui = Player:WaitForChild("PlayerGui")
-local Packages = ReplicatedStorage:WaitForChild("Packages")
-local Net = require(Packages.Net)
+local Packages = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index")
+local TeleportService = game:GetService("TeleportService")
+local GuiService = game:GetService("GuiService")
 local Camera = workspace.CurrentCamera
 
--- Controller Internal untuk Bypass BAC-8215
-local FishingController = require(ReplicatedStorage.Controllers.FishingController)
-
--- Pemetaan Remote Berdasarkan Dump Sesi Terbaru
-function EquipToolFromHotbar(num) return Net:RemoteEvent("EquipToolFromHotbar"):FireServer(num or 1) end
-function SellAllItems() return Net:RemoteFunction("SellAllItems"):InvokeServer() end
-function FavoriteItem(Uid) return Net:RemoteEvent("FavoriteItem"):FireServer(Uid) end
-function EquipItem(Uid, Cat) return Net:RemoteEvent("EquipItem"):FireServer(Uid, Cat) end
-function PurchaseFishingRod(Id) return Net:RemoteFunction("PurchaseFishingRod"):InvokeServer(Id) end
-function PurchaseBait(Id) return Net:RemoteFunction("PurchaseBait"):InvokeServer(Id) end
-function EquipBait(Id) return Net:RemoteEvent("EquipBait"):FireServer(Id) end
-function PlaceLeverItem(item) return Net:RemoteEvent("PlaceLeverItem"):FireServer(item) end
-function PurchaseWeatherEvent(n) return Net:RemoteFunction("PurchaseWeatherEvent"):InvokeServer(n) end
-function PurchaseMarketItem(id) return Net:RemoteFunction("PurchaseMarketItem"):InvokeServer(id) end
-function RedeemCode(c) return Net:RemoteFunction("RedeemCode"):InvokeServer(c) end
-function ConsumePotion(uuid, amt) return Net:RemoteFunction("ConsumePotion"):InvokeServer(uuid, amt or 1) end
-
--- Database Loaders
+-- Database Imports
 local DBFish = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/fishlists'))
 local DBRod = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/rodlists'))
 local DBBait = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/baitlists'))
 local DBEnchant = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/enchantlists'))
 
 local EnchantMap = {}
-for _, v in pairs(DBEnchant) do EnchantMap[tostring(v.Id)] = v.EnchantName end
+for _, v in pairs(DBEnchant) do
+    EnchantMap[tostring(v.Id)] = v.EnchantName
+end
 
--- Helper Functions (Sama seperti main-v6)
+-- Net Discovery (Sleitnick Net)
+local NetFolder = nil
+for _, folder in pairs(Packages:GetChildren()) do
+    if folder.Name:match("sleitnick_net") then
+        NetFolder = folder:WaitForChild("net")
+        break
+    end
+end
+local Net = NetFolder:GetChildren()
+
+-- Remapping Function Berdasarkan Dump Terbaru
+function EquipToolFromHotbar(number) return Net[96]:FireServer(number or 1) end
+function SellAllItems() return Net[150]:InvokeServer() end
+function FavoriteItem(Uid) return Net[90]:FireServer(Uid) end
+function EquipItem(Uid, Item) return Net[84]:FireServer(Uid, Item) end
+function PurchaseFishingRod(Id) return Net[152]:InvokeServer(Id) end
+function PurchaseBait(Id) return Net[154]:InvokeServer(Id) end
+function EquipBait(Id) return Net[88]:FireServer(Id) end
+function PlaceLeverItem(item) return Net[308]:FireServer(item) end
+function PurchaseWeatherEvent(name) return Net[40]:InvokeServer(name) end
+function PurchaseMarketItem(id) return Net[229]:InvokeServer(id) end
+function RedeemCode(code) return Net[217]:InvokeServer(code) end
+function ConsumePotion(uuid, amount) return Net[173]:InvokeServer(uuid, amount or 1) end
+
+-- Re-implementasi Fishing logic sesuai aslinya tapi AMAN
+function ChargeFishingRod()
+    local power = 1
+    local time = workspace:GetServerTimeNow()
+    return Net[128]:InvokeServer(nil, nil, time, nil) -- Menggunakan index [128] dari dump
+end
+
+function RequestFishingMinigameStarted()
+    -- Mengisi argumen agar tidak nil di baris 478
+    return Net[136]:InvokeServer(0, 1, workspace:GetServerTimeNow()) 
+end
+
+function CancelFishingInputs()
+    return Net[130]:InvokeServer()
+end
+
+-- [LOGIKA QUEST & HELPER TETAP ASLI]
 function ConsumePotions()
     local inventory = DataReplion:Get({"Inventory", "Potions"}) or {}
     for _, item in ipairs(inventory) do
-        if TargetPotions[tonumber(item.Id)] and item.UUID then
+        local itemId = tonumber(item.Id)
+        if TargetPotions[itemId] and item.UUID then
             pcall(function() ConsumePotion(item.UUID, 1) end)
-            task.wait(0.1) 
+            task.wait(0.2)
         end
+    end
+end
+
+function RedeemAllCodes()
+    for _, code in ipairs(Codes) do
+        pcall(function() RedeemCode(code) end)
+        task.wait(0.2)
     end
 end
 
@@ -144,82 +190,202 @@ function SpawnTotem()
     local totemid = Settings["Totem"] == "Mutation" and 2 or 1
     for _, item in ipairs(items) do
         if tonumber(item.Id) == totemid and item.UUID then
-            Net:RemoteEvent("SpawnTotem"):FireServer(item.UUID)
-            task.wait(1); EquipToolFromHotbar(); break 
+            Net[221]:FireServer(item.UUID)
+            task.wait(2)
+            EquipToolFromHotbar()
+            break
         end
     end
 end
 
-function CheckProgress(text)
-    if not text then return false end
-    local c, r = string.match(string.gsub(text, ",", ""), "(%d+)%s*/%s*(%d+)")
-    return (c and r and tonumber(c) >= tonumber(r)) or string.find(text, "100%%") ~= nil
+function GetCoin() return DataReplion:Get("Coins") end
+
+function CheckProgress(progressText)
+    if not progressText then return false end
+    local cleanText = string.gsub(progressText, ",", "")
+    local current, required = string.match(cleanText, "(%d+)%s*/%s*(%d+)")
+    if current and required then
+        return tonumber(current) >= tonumber(required)
+    end
+    return string.find(cleanText, "100%%") ~= nil
 end
 
 function GetDeepSeaQuest()
-    local qL = PlayerGui:FindFirstChild("Quest") and PlayerGui.Quest.List.Inside
-    local res = {"1/1", "1/1", "1/1", "1/1"}
-    if qL then
-        for _, q in ipairs(qL:GetChildren()) do
-            if q:FindFirstChild("Content") and q.Content.Objective1:FindFirstChild("Prefix", true) and string.find(q.Content.Objective1:FindFirstChild("Prefix", true).Text, "300") then
-                for i=1,4 do res[i] = q.Content["Objective"..i]:FindFirstChild("Progress", true).Text end
-                break
+    local questList = PlayerGui:FindFirstChild("Quest") and PlayerGui.Quest:FindFirstChild("List") and PlayerGui.Quest.List:FindFirstChild("Inside")
+    local results = {"1/1", "1/1", "1/1", "1/1"}
+    if questList then
+        for _, q in ipairs(questList:GetChildren()) do
+            if q:FindFirstChild("Content") then
+                local obj1 = q.Content:FindFirstChild("Objective1")
+                if obj1 and obj1:FindFirstChild("Prefix", true) and string.find(obj1:FindFirstChild("Prefix", true).Text, "300") then
+                    for i = 1, 4 do
+                        local progObj = q.Content:FindFirstChild("Objective" .. i):FindFirstChild("Progress", true)
+                        results[i] = progObj and progObj.Text or "1/1"
+                    end
+                    break
+                end
             end
         end
     end
-    return res
+    return results
+end
+
+function GetJungle2025Quest()
+    local questList = PlayerGui:FindFirstChild("Quest") and PlayerGui.Quest:FindFirstChild("List") and PlayerGui.Quest.List:FindFirstChild("Inside")
+    local results = {"1/1", "1/1", "1/1", "1/1"}
+    if questList then
+        for _, q in ipairs(questList:GetChildren()) do
+            if q:FindFirstChild("Content") then
+                local isTarget = false
+                for _, txt in ipairs(q.Content:GetDescendants()) do
+                    if txt:IsA("TextLabel") and (string.find(txt.Text, "Create 3") or string.find(txt.Text, "Element")) then
+                        isTarget = true; break
+                    end
+                end
+                if isTarget then
+                    for i = 1, 4 do
+                        local objFrame = q.Content:FindFirstChild("Objective" .. i)
+                        local progObj = objFrame and objFrame:FindFirstChild("Progress", true)
+                        results[i] = progObj and progObj.Text or "1/1"
+                    end
+                    break
+                end
+            end
+        end
+    end
+    return results
+end
+
+function GetTempleLevers() return DataReplion:Get("TempleLevers") end
+function GetWeather(name) return PlayerGui.Events.Frame.Events[name].Visible end
+function GetEquippedUid() return DataReplion:Get("EquippedId") end
+function GetEquippedType() return DataReplion:Get("EquippedType") end
+function GetEquippedBaitId() return DataReplion:Get("EquippedBaitId") end
+function Teleport(location) Character:WaitForChild("HumanoidRootPart").CFrame = location end
+
+function GetBaits()
+    local items = DataReplion:Get({"Inventory", "Baits"}) or {}
+    local bestLuck, bestId = -1, nil
+    Owned["Baits"] = {}
+    for _, item in ipairs(items) do
+        local baitData = DBBait[tostring(item.Id)]
+        if baitData and baitData.BaseLuck then
+            Owned["Baits"][item.Id] = item.UUID
+            if baitData.BaseLuck > bestLuck then
+                bestLuck = baitData.BaseLuck
+                bestId = item.Id
+            end
+        end
+    end
+    Temporary["BestBait"] = bestId
 end
 
 function GetRods()
     local items = DataReplion:Get({"Inventory", "Fishing Rods"}) or {}
-    local bestL, bestU, bestI = -1, nil, nil
+    local bestLuck, bestUUID, bestId = -1, nil, nil
     for _, item in ipairs(items) do
-        local data = DBRod[tostring(item.Id)]
-        if data and data.BaseLuck and data.BaseLuck > bestL then
-            bestL, bestU, bestI = data.BaseLuck, item.UUID, item.Id
-            Temporary["Enchant1"] = item.Metadata and EnchantMap[tostring(item.Metadata.EnchantId)] or "None"
-            Temporary["Enchant2"] = item.Metadata and EnchantMap[tostring(item.Metadata.EnchantId2)] or "None"
+        local rodData = DBRod[tostring(item.Id)]
+        if rodData and rodData.BaseLuck then
+            Owned["Rods"][item.Id] = item.UUID
+            if rodData.BaseLuck > bestLuck then
+                bestLuck = rodData.BaseLuck
+                bestUUID, bestId = item.UUID, item.Id
+                Temporary["Enchant1"] = item.Metadata and EnchantMap[tostring(item.Metadata.EnchantId)] or "None"
+                Temporary["Enchant2"] = item.Metadata and EnchantMap[tostring(item.Metadata.EnchantId2)] or "None"
+            end
         end
     end
-    Temporary["BestRod"], Temporary["BestRodId"] = bestU, bestI
+    Temporary["BestRod"], Temporary["BestRodId"] = bestUUID, bestId
 end
 
-function GetBaits()
-    local items = DataReplion:Get({"Inventory", "Baits"}) or {}
-    local bestL, bestI = -1, nil
-    Owned["Baits"] = {}
-    for _, item in ipairs(items) do
-        local data = DBBait[tostring(item.Id)]
-        if data and data.BaseLuck then
-            Owned["Baits"][item.Id] = item.UUID
-            if data.BaseLuck > bestL then bestL, bestI = data.BaseLuck, item.Id end
+function Set3dRenderingEnabled(status)
+    RunService:Set3dRenderingEnabled(status)
+    if not status and not Temporary["ScreenGui"] then
+        Temporary["ScreenGui"] = Instance.new("ScreenGui", PlayerGui)
+        Temporary["ScreenGui"].Name = "BigTextGui"
+        local label = Instance.new("TextLabel", Temporary["ScreenGui"])
+        label.Size, label.Position, label.BackgroundTransparency = UDim2.new(0.8, 0, 0.3, 0), UDim2.new(0.1, 0, 0.35, 0), 1
+        label.Text, label.Font, label.TextScaled = tostring(Player), Enum.Font.GothamBlack, true
+    elseif status and Temporary["ScreenGui"] then
+        Temporary["ScreenGui"]:Destroy(); Temporary["ScreenGui"] = nil
+    end
+    Temporary["Render"] = status
+end
+
+function contains(tbl, val)
+    for _, v in ipairs(tbl) do if v == val then return true end end
+    return false
+end
+
+local function LoadDB(folder)
+    if not folder then return end
+    for _, v in ipairs(folder:GetChildren()) do
+        local ok, data = pcall(require, v)
+        if ok and (data.Data or data) then
+            local info = data.Data or data
+            local id, name = tostring(info.Id or v.Name), tostring(info.Name or v.Name)
+            if DBFish and DBFish[id] then
+                info.Tier = DBFish[id].Tier
+                if DBFish[id].Rarity then info.Rarity = DBFish[id].Rarity end
+            end
+            local rarity = info.Rarity and string.upper(tostring(info.Rarity)) or tierToRarity[info.Tier] or "COMMON"
+            ItemDatabase[id] = { Name = name, Rarity = rarity, Tier = info.Tier }
+            ItemDatabase[name] = ItemDatabase[id]
         end
     end
-    Temporary["BestBait"] = bestI
 end
 
--- Scan & Webhook (Tetap asli)
+LoadDB(ReplicatedStorage:FindFirstChild("Items"))
+LoadDB(ReplicatedStorage:FindFirstChild("Database") and ReplicatedStorage.Database:FindFirstChild("Fish"))
+LoadDB(ReplicatedStorage:FindFirstChild("Database") and ReplicatedStorage.Database:FindFirstChild("Items"))
+
 local function ScanSecrets()
-    GetRods()
-    local all = {}
-    for _, v in ipairs(DataReplion:Get({"Inventory", "Fish"}) or {}) do table.insert(all, v) end
-    for _, v in ipairs(DataReplion:Get({"Inventory", "Items"}) or {}) do table.insert(all, v) end
-    local list, total = {}, 0
-    for _, item in ipairs(all) do
-        local r = item.Metadata and item.Metadata.Rarity or "COMMON"
-        if r == "SECRET" or item.Tier == 7 then
-            total = total + 1
-            local name = item.Id or "Unknown"
-            list[name] = (list[name] or 0) + 1
+    pcall(GetRods)
+    local allItems = {}
+    for _, v in ipairs(DataReplion:Get({"Inventory", "Fish"}) or {}) do table.insert(allItems, v) end
+    for _, v in ipairs(DataReplion:Get({"Inventory", "Items"}) or {}) do table.insert(allItems, v) end
+    local secretList, grouped, totalSecretCount = {}, {}, 0
+    for _, item in ipairs(allItems) do
+        local info = ItemDatabase[tostring(item.Id or item.Name)] or { Name = tostring(item.Id), Rarity = "UNKNOWN" }
+        local isTarget = (info.Rarity == "SECRET" or info.Tier == 7)
+        local finalName = info.Name
+        local variant = item.Metadata and item.Metadata.VariantId
+        if not isTarget and variant and FavoriteConfig.WhitelistId[item.Id] and FavoriteConfig.WhitelistVariant[variant] then
+            isTarget = true; finalName = variant .. " " .. info.Name
+        end
+        if isTarget then
+            totalSecretCount = totalSecretCount + 1
+            if not grouped[finalName] then
+                local newEntry = { Name = finalName, Count = 0 }
+                table.insert(secretList, newEntry); grouped[finalName] = newEntry
+            end
+            grouped[finalName].Count = grouped[finalName].Count + 1
         end
     end
-    local payload = { Username = Player.Name, TotalSecrets = total, Rod = Temporary["BestRodId"], Timestamp = os.time() }
-    pcall(function() 
-        (http_request or request)({ Url = ScanConfig.Endpoint, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload) })
-    end)
+
+    local rodName = Temporary["BestRodId"] and (DBRod[tostring(Temporary["BestRodId"])] and DBRod[tostring(Temporary["BestRodId"])].Name or "Unknown") or "None"
+    local payload = {
+        Username = Player.Name, UserId = Player.UserId, Status = Temporary["FishingCatch"] > LastCatchCount and "Online" or "Offline",
+        TotalSecrets = totalSecretCount, Items = secretList, Rod = rodName, Enchant1 = Temporary["Enchant1"] or "-",
+        Enchant2 = Temporary["Enchant2"] or "-", Timestamp = os.time()
+    }
+    LastCatchCount = Temporary["FishingCatch"]
+    local req = (http_request or request)
+    if req then req({ Url = ScanConfig.Endpoint, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)}) end
 end
 
--- Anti-AFK & Low Graphics
+function LowSetting()
+    game:GetService("Lighting").GlobalShadows = false
+    settings().Rendering.QualityLevel = "Level01"
+    for _, v in pairs(game:GetService("Lighting"):GetChildren()) do if v:IsA("PostEffect") then v.Enabled = false end end
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then v.Material, v.Reflectance, v.CastShadow = Enum.Material.SmoothPlastic, 0, false
+        elseif v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then v.Enabled = false end
+    end
+end
+
+-- Anti-AFK
 RunService.Heartbeat:Connect(function()
     if tick() - Temporary["AFK"] > 600 then
         Temporary["AFK"] = tick()
@@ -227,71 +393,103 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Main Loop Logic
-task.spawn(function() while Temporary["Running"] do pcall(ScanSecrets); task.wait(900) end end)
+GuiService.ErrorMessageChanged:Connect(function()
+    task.wait(5); TeleportService:Teleport(game.PlaceId, Player)
+end)
 
+LowSetting()
+GetRods()
+GetBaits()
+RedeemAllCodes()
+
+task.spawn(function()
+    task.wait(60)
+    while Temporary["Running"] do pcall(ScanSecrets); task.wait(900) end
+end)
+
+-- [LOOP UTAMA SAMA PERSIS DENGAN MAIN-V6]
 while Temporary["Running"] do
+    if Settings["Render"] ~= Temporary["Render"] then Set3dRenderingEnabled(Settings["Render"]) end
+
     if Settings["AutoFish"] then
-        -- 1. Inventory & Shop Management
-        if Temporary["FishCatch"] >= Settings["SellCount"] then
+        if Temporary["FishCatch"] > Settings["SellCount"] then
             Temporary["FishCatch"] = 0
             SellAllItems()
-            task.wait(0.5)
-            
-            -- Auto Buy Rods/Baits/Weathers
-            for _, val in pairs(Settings["BuyRods"]) do if not Owned["Rods"][val] and DataReplion:Get("Coins") > 1000 then PurchaseFishingRod(val) end end
+            task.wait(0.2)
+            if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
+
+            for _, val in pairs(Settings["BuyRods"]) do if DBRod[tostring(val)] and not Owned["Rods"][val] and GetCoin() > DBRod[tostring(val)].Price then PurchaseFishingRod(val); task.wait(0.2) end end
+            for _, val in pairs(Settings["BuyBaits"]) do if DBBait[tostring(val)] and not Owned["Baits"][val] and GetCoin() > DBBait[tostring(val)].Price then PurchaseBait(val); task.wait(0.2) end end
+            for _, val in pairs(Settings["Weathers"]) do if WeathersData[val] and GetCoin() > WeathersData[val] and not GetWeather(val) then PurchaseWeatherEvent(val); task.wait(0.2) end end
+
             GetRods(); GetBaits()
-            
-            if Temporary["BestRod"] and DataReplion:Get("EquippedId") ~= Temporary["BestRod"] then
-                EquipItem(Temporary["BestRod"], "Fishing Rods"); task.wait(1)
-            end
-            if Temporary["BestBait"] and DataReplion:Get("EquippedBaitId") ~= Temporary["BestBait"] then
-                EquipBait(Temporary["BestBait"]); task.wait(0.5)
-            end
-            
-            -- Quest & Teleport Logic
+            if Temporary["BestRod"] and GetEquippedUid() ~= Temporary["BestRod"] then EquipItem(Temporary["BestRod"], "Fishing Rods"); task.wait(1) end
+            if Temporary["BestBait"] and GetEquippedBaitId() ~= Temporary["BestBait"] then EquipBait(Temporary["BestBait"]); task.wait(0.2) end
+            if Temporary["BestRodId"] == 257 and GetCoin() > 1000000 then PurchaseTotem(); task.wait(1) end
+
+            local CanSecret = false
+            for k, _ in pairs(Owned["Rods"]) do if DBRod[tostring(k)] and DBRod[tostring(k)].BaseLuck >= 3.8 then CanSecret = true; break end end
+
             if next(Settings["Quest"]) then
                 if contains(Settings["Quest"], "DeepSea") then
                     local q = GetDeepSeaQuest()
-                    if CheckProgress(q[1]) and CheckProgress(q[2]) then table.remove(Settings["Quest"], 1) end
+                    if not (CheckProgress(q[1]) and CheckProgress(q[2]) and CheckProgress(q[3]) and CheckProgress(q[4])) then
+                        DynamicLocation = not CanSecret and "Kohana Volcano" or (not (CheckProgress(q[2]) and CheckProgress(q[3])) and "Sisyphus Statue" or "Treasure Room")
+                    else table.remove(Settings["Quest"], 1); DynamicLocation = nil end
+                elseif contains(Settings["Quest"], "Jungle2025") then
+                    local q = GetJungle2025Quest()
+                    if not (CheckProgress(q[1]) and CheckProgress(q[2]) and CheckProgress(q[3])) then
+                        local lev = GetTempleLevers()
+                        if not lev["Diamond Artifact"] then PlaceLeverItem("Diamond Artifact")
+                        elseif not lev["Crescent Artifact"] then PlaceLeverItem("Crescent Artifact")
+                        elseif not lev["Hourglass Diamond Artifact"] then PlaceLeverItem("Hourglass Diamond Artifact")
+                        elseif not lev["Arrow Artifact"] then PlaceLeverItem("Arrow Artifact") end
+                        DynamicLocation = not lev["Diamond Artifact"] and "Diamond Artifact" or (not lev["Crescent Artifact"] and "Crescent Artifact" or "Arrow Artifact")
+                    else table.remove(Settings["Quest"], 1); DynamicLocation = nil end
                 end
             end
-            
-            local targetLoc = Settings["DefaultLocation"]
-            if Temporary["Location"] ~= targetLoc then
-                Teleport(Locations[targetLoc]); Temporary["Location"] = targetLoc; task.wait(5)
+
+            if not DynamicLocation then DynamicLocation = Settings["DefaultLocation"] end
+            if Temporary["Location"] ~= DynamicLocation and DynamicLocation then
+                if DynamicLocation == "Ocean" then
+                    Teleport(Locations[DynamicLocation])
+                    task.wait(0.1)
+                    RootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    RootPart.Anchored = true
+                else
+                    Teleport(Locations[DynamicLocation])
+                    RootPart.Anchored = false
+                end
+                Temporary["Location"] = DynamicLocation; task.wait(10)
             end
-            ConsumePotions(); SpawnTotem()
+            ConsumePotions(); SpawnTotem(); task.wait(2)
         end
 
-        -- 2. Mekanisme Mancing Aman (Internal Controller)
-        if DataReplion:Get("EquippedType") ~= "Fishing Rods" then EquipToolFromHotbar() end
+        if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
         
-        if not FishingController:OnCooldown() then
-            -- Langkah 1: Charge (Menggunakan flag 'true' untuk bypass baris 478)
-            FishingController:RequestChargeFishingRod(Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2), true)
-            
-            -- Langkah 2: Tunggu Ikan (Mendapatkan GUID Sesi)
-            local guid = nil
-            local timeout = tick()
-            while not guid and (tick() - timeout < 15) and Temporary["Running"] do
-                task.wait(0.2)
-                guid = FishingController:GetCurrentGUID()
-            end
-            
-            -- Langkah 3: Minigame (Simulasi Klik Manusia untuk bypass BAC-8215)
-            if guid then
-                print("Sesi valid: "..tostring(guid))
-                while FishingController:GetCurrentGUID() == guid and Temporary["Running"] do
-                    FishingController:RequestFishingMinigameClick()
-                    -- Delay acak agar tidak terbaca bot (sangat penting!)
-                    task.wait(0.1 + math.random() * 0.2)
-                end
+        CancelFishingInputs()
+        task.wait(0.2)
+        local status, result = ChargeFishingRod()
+        
+        if status then
+            local statusMinigame, resultMinigame = RequestFishingMinigameStarted()
+            if statusMinigame then
+                -- MEKANISME DELAY ASLI + SAFETY
+                local stats = DataReplion:Get("Stats") or { FishingClickPower = 1, FishingRodTier = 1 }
+                local delay = (1 / stats.FishingClickPower) * RodDelays[stats.FishingRodTier]
+                task.wait(delay + math.random(0.05, 0.15)) 
+                
+                -- Menggunakan Net[142] untuk CatchFishCompleted berdasarkan dump terbaru
+                Net[142]:InvokeServer() 
                 Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
                 Temporary["FishCatch"] = Temporary["FishCatch"] + 1
-                task.wait(1)
+                task.wait(0.3)
             end
+        else
+            task.wait(1)
         end
+    else
+        Temporary["FishCatch"] = 99999
+        task.wait(1)
     end
-    task.wait(0.5)
 end
