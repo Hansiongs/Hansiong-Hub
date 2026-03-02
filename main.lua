@@ -13,13 +13,7 @@ local LastCatchCount = -1
 local ItemDatabase = {}
 local tierToRarity = { [7]="SECRET" }
 local DynamicLocation = ""
-local Codes = {
-    "NEWYEARLANTERN",
-    "FREECRYSTAL",
-    "PIRATEMAJA",
-    "SCALEREFUND",
-    "DIVING",
-}
+
 
 local TargetPotions = {
     [1] = "Luck I Potion",
@@ -102,27 +96,6 @@ function EquipBait(id) return Net:RemoteEvent("EquipBait"):FireServer(id) end
 function PlaceLeverItem(item) return Net:RemoteEvent("PlaceLeverItem"):FireServer(item) end
 function PurchaseWeatherEvent(n) return Net:RemoteFunction("PurchaseWeatherEvent"):InvokeServer(n) end
 function PurchaseMarketItem(id) return Net:RemoteFunction("PurchaseMarketItem"):InvokeServer(id) end
-function RedeemCode(c) return Net:RemoteFunction("RedeemCode"):InvokeServer(c) end
-function ConsumePotion(u, a) return Net:RemoteFunction("ConsumePotion"):InvokeServer(u, a or 1) end
-
--- [LOGIKA QUEST & HELPER TETAP ASLI]
-function ConsumePotions()
-    local inventory = DataReplion:Get({"Inventory", "Potions"}) or {}
-    for _, item in ipairs(inventory) do
-        local itemId = tonumber(item.Id)
-        if TargetPotions[itemId] and item.UUID then
-            pcall(function() ConsumePotion(item.UUID, 1) end)
-            task.wait(0.2)
-        end
-    end
-end
-
-function RedeemAllCodes()
-    for _, code in ipairs(Codes) do
-        pcall(function() RedeemCode(code) end)
-        task.wait(0.2)
-    end
-end
 
 function PurchaseTotem()
     local purchaseid = Settings["Totem"] == "Mutation" and 8 or 5
@@ -357,7 +330,6 @@ end)
 LowSetting()
 GetRods()
 GetBaits()
-RedeemAllCodes()
 
 task.spawn(function()
     task.wait(60)
@@ -368,8 +340,8 @@ if Settings["AutoFish"] then
     local initLoc = Settings["DefaultLocation"]
     if Locations[initLoc] then
         Teleport(Locations[initLoc])
-        Temporary["Location"] = DynamicLocation
-        task.wait(10) 
+        Temporary["Location"] = initLoc
+        task.wait(30) 
     end
 end
 
@@ -440,7 +412,7 @@ while Temporary["Running"] do
                 Teleport(Locations[DynamicLocation])        
                 Temporary["Location"] = DynamicLocation; task.wait(5)
             end
-            ConsumePotions(); SpawnTotem(); task.wait(2)
+            SpawnTotem(); task.wait(2)
         end
 
         if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
