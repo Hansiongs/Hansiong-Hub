@@ -117,33 +117,21 @@ local DBBait = HttpService:JSONDecode(game:HttpGet('https://raw.githubuserconten
 local DBEnchant = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/enchantlists'))
 
 local EnchantMap = {}
-for _, v in pairs(DBEnchant) do
-    EnchantMap[tostring(v.Id)] = v.EnchantName
-end
-
--- Net Discovery (Sleitnick Net)
-local NetFolder = nil
-for _, folder in pairs(Packages:GetChildren()) do
-    if folder.Name:match("sleitnick_net") then
-        NetFolder = folder:WaitForChild("net")
-        break
-    end
-end
-local Net = NetFolder:GetChildren()
+for _, v in pairs(DBEnchant) do EnchantMap[tostring(v.Id)] = v.EnchantName end
 
 -- Remapping Function Berdasarkan Dump Terbaru
-function EquipToolFromHotbar(number) return Net[96]:FireServer(number or 1) end
-function SellAllItems() return Net[150]:InvokeServer() end
-function FavoriteItem(Uid) return Net[90]:FireServer(Uid) end
-function EquipItem(Uid, Item) return Net[84]:FireServer(Uid, Item) end
-function PurchaseFishingRod(Id) return Net[152]:InvokeServer(Id) end
-function PurchaseBait(Id) return Net[154]:InvokeServer(Id) end
-function EquipBait(Id) return Net[88]:FireServer(Id) end
-function PlaceLeverItem(item) return Net[308]:FireServer(item) end
-function PurchaseWeatherEvent(name) return Net[40]:InvokeServer(name) end
-function PurchaseMarketItem(id) return Net[229]:InvokeServer(id) end
-function RedeemCode(code) return Net[217]:InvokeServer(code) end
-function ConsumePotion(uuid, amount) return Net[173]:InvokeServer(uuid, amount or 1) end
+function EquipToolFromHotbar(n) return Net:RemoteEvent("EquipToolFromHotbar"):FireServer(n or 1) end
+function SellAllItems() return Net:RemoteFunction("SellAllItems"):InvokeServer() end
+function FavoriteItem(u) return Net:RemoteEvent("FavoriteItem"):FireServer(u) end
+function EquipItem(u, i) return Net:RemoteEvent("EquipItem"):FireServer(u, i) end
+function PurchaseFishingRod(id) return Net:RemoteFunction("PurchaseFishingRod"):InvokeServer(id) end
+function PurchaseBait(id) return Net:RemoteFunction("PurchaseBait"):InvokeServer(id) end
+function EquipBait(id) return Net:RemoteEvent("EquipBait"):FireServer(id) end
+function PlaceLeverItem(item) return Net:RemoteEvent("PlaceLeverItem"):FireServer(item) end
+function PurchaseWeatherEvent(n) return Net:RemoteFunction("PurchaseWeatherEvent"):InvokeServer(n) end
+function PurchaseMarketItem(id) return Net:RemoteFunction("PurchaseMarketItem"):InvokeServer(id) end
+function RedeemCode(c) return Net:RemoteFunction("RedeemCode"):InvokeServer(c) end
+function ConsumePotion(u, a) return Net:RemoteFunction("ConsumePotion"):InvokeServer(u, a or 1) end
 
 -- [LOGIKA QUEST & HELPER TETAP ASLI]
 function ConsumePotions()
@@ -174,7 +162,7 @@ function SpawnTotem()
     local totemid = Settings["Totem"] == "Mutation" and 2 or 1
     for _, item in ipairs(items) do
         if tonumber(item.Id) == totemid and item.UUID then
-            Net[221]:FireServer(item.UUID)
+            Net:RemoteEvent("SpawnTotem"):FireServer(item.UUID)
             task.wait(2)
             EquipToolFromHotbar()
             break
