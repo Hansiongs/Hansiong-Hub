@@ -468,11 +468,11 @@ while Temporary["Running"] do
                 while FishingController:GetCurrentGUID() == guid do
                     FishingController:RequestFishingMinigameClick()
                     
-                    task.wait(0.1 + math.random() * 0.2)
+                    task.wait(0.2 + math.random() * 0.2)
                 end
                 Temporary["FishingCatch"] = Temporary["FishingCatch"] + 1
                 Temporary["FishCatch"] = Temporary["FishCatch"] + 1
-                task.wait(0.2)
+                task.wait(0.5)
             end
         end
     else
