@@ -424,7 +424,6 @@ while Temporary["Running"] do
                         DynamicLocation = not lev["Diamond Artifact"] and "Diamond Artifact" or (not lev["Crescent Artifact"] and "Crescent Artifact" or "Arrow Artifact")
                     else table.remove(Settings["Quest"], 1); DynamicLocation = nil end
                 end
-                task.wait(20)
             end
 
             if not DynamicLocation then DynamicLocation = Settings["DefaultLocation"] end
@@ -432,7 +431,7 @@ while Temporary["Running"] do
                 Teleport(Locations[DynamicLocation])        
                 Temporary["Location"] = DynamicLocation; task.wait(5)
             end
-            ConsumePotions(); SpawnTotem(); task.wait(2)
+            ConsumePotions(); SpawnTotem(); task.wait(30)
         end
 
         if GetEquippedType() ~= "Fishing Rods" then EquipToolFromHotbar() end
