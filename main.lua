@@ -1021,7 +1021,7 @@ end
 local function MainFishingLoop()
 	while true do
 		while LocalPlayer:GetAttribute("InCutscene") do
-			task.wait(COOLDOWN.POOL)
+			task.wait(COOLDOWN.POLL)
 		end
 		-- Auto-sell, Auto-Buy & Quest Check block
 		if FEATURES.FISH_COUNT > 0 and State.SuccessCount >= FEATURES.FISH_COUNT then					
