@@ -1,7 +1,10 @@
 -- Advanced Fishing Constants
 local POWER_THRESHOLD = 0.96
+local COOLDOWN_POLL = 0.1
+local INSTANT_CATCH_DELAY = 4
 local FEATURES = getgenv().FEATURES
-local COOLDOWN = getgenv().COOLDOWNS
+local MORECOOLDOWN = getgenv().MORECOOLDOWN
+
 
 local FAVORITE_CONFIG = {
 	WhitelistId = {
@@ -86,6 +89,8 @@ local State = {
 	BestRodUid = nil,
 	BestRodId = nil,
 	BestBaitId = nil,
+	BestEnchant1 = "None",
+	BestEnchant2 = "None",
 }
 
 --================================================
@@ -95,9 +100,8 @@ local State = {
 local function PrintConfig()
 	print("[AutoFish] Starting fishing...")
 	print(string.format(
-		"[AutoFish] Features: LOW_GFX=%s | AUTO_FAV=%s | ERROR=%s | 3D_OFF=%s | NO_NOTIF=%s | AUTO_SELL=%s",
+		"[AutoFish] Features: LOW_GFX=%s | ERROR=%s | 3D_OFF=%s | NO_NOTIF=%s | AUTO_SELL=%s",
 		tostring(FEATURES.LOW_GRAPHICS),
-		tostring(FEATURES.AUTO_FAVORITE),
 		tostring(FEATURES.ERROR_HANDLER),
 		tostring(FEATURES.DISABLE_3D),
 		tostring(FEATURES.DISABLE_NOTIFICATIONS),
@@ -365,6 +369,8 @@ local DBFish = nil
 local DBRod = nil
 local DBBait = nil
 local DBTotem = nil
+local DBEnchant = nil
+local EnchantMap = {}
 
 local function LoadDatabases()
 	pcall(function()
@@ -372,6 +378,12 @@ local function LoadDatabases()
 		DBRod = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/rodlists'))
 		DBBait = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/baitlists'))
 		DBTotem = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/totemlists'))
+		DBEnchant = HttpService:JSONDecode(game:HttpGet('https://raw.githubusercontent.com/Hansiongs/Hansiong-Hub/refs/heads/main/enchantlists'))
+		
+		for _, v in pairs(DBEnchant) do 
+			EnchantMap[tostring(v.Id)] = v.EnchantName 
+		end
+		
 		print("[AutoFish] Databases loaded successfully")
 	end)
 end
@@ -383,6 +395,8 @@ local function GetRods()
 	local bestLuck = -1
 	local bestUUID = nil
 	local bestId = nil
+	local bestEnchant1 = "None"
+	local bestEnchant2 = "None"
 	State.OwnedRods = {}
 	State.CanCatchSecret = false
 
@@ -395,9 +409,22 @@ local function GetRods()
 				bestLuck = rodData.BaseLuck
 				bestUUID = item.UUID
 				bestId = item.Id
+				
+				bestEnchant1 = "None"
+				bestEnchant2 = "None"
+
+				if item.Metadata then
+					if item.Metadata.EnchantId then
+						local id = tostring(item.Metadata.EnchantId)
+						bestEnchant1 = EnchantMap[id] or ("ID: " .. id)
+					end
+					if item.Metadata.EnchantId2 then
+						local id = tostring(item.Metadata.EnchantId2)
+						bestEnchant2 = EnchantMap[id] or ("ID: " .. id)
+					end
+				end
 			end
 			
-			-- Auto Deteksi CanSecret
 			if rodData.BaseLuck >= 3.8 then
 				State.CanCatchSecret = true
 			end
@@ -406,6 +433,8 @@ local function GetRods()
 
 	State.BestRodUid = bestUUID
 	State.BestRodId = bestId
+	State.BestEnchant1 = bestEnchant1
+	State.BestEnchant2 = bestEnchant2
 end
 
 local function GetBaits()
@@ -460,17 +489,36 @@ local function SpawnTotem(totemName)
 	if not targetId then return warn("[AutoSpawn] '" .. totemName .. "' ga ada di DB GitHub.") end
 
 	if not DataReplion then return warn("[Error] Data player belum load.") end
-	local invTotems = DataReplion:Get({"Inventory", "Totems"}) or {}
-	local itemObj
 	
-	for k, v in pairs(invTotems) do
-		if type(v) == "table" and tonumber(v.Id) == targetId then
-			itemObj = v
-			itemObj.UUID = v.UUID or k
-			break
+	-- Helper fungsi untuk mencari totem di tas
+	local function FindTotemInInv()
+		local invTotems = DataReplion:Get({"Inventory", "Totems"}) or {}
+		for k, v in pairs(invTotems) do
+			if type(v) == "table" and tonumber(v.Id) == targetId then
+				local foundObj = v
+				foundObj.UUID = v.UUID or k
+				return foundObj
+			end
+		end
+		return nil
+	end
+
+	local itemObj = FindTotemInInv()
+	
+	-- JIKA HABIS/TIDAK ADA, OTOMATIS BELI DI MERCHANT
+	if not itemObj then 
+		warn("[AutoSpawn] Lu ga punya stok '" .. totemName .. "' di tas. Mencoba beli otomatis di Merchant...")
+		local successBuy = PurchaseFromShop("Merchant", totemName)
+		
+		if successBuy then
+			task.wait(1.5) -- Tunggu sinkronisasi data dari server
+			itemObj = FindTotemInInv()
+		end
+		
+		if not itemObj then
+			return warn("[AutoSpawn] Gagal beli atau koin lu tidak cukup untuk '" .. totemName .. "'.") 
 		end
 	end
-	if not itemObj then return warn("[AutoSpawn] Lu ga punya stok '" .. totemName .. "' di tas.") end
 
 	local function GetHotbarTile()
 		local display = LocalPlayer.PlayerGui:FindFirstChild("Backpack") and LocalPlayer.PlayerGui.Backpack:FindFirstChild("Display")
@@ -948,7 +996,7 @@ local function PerformAutoBuy()
 end
 
 --================================================
--- AUTO FAVORITE SYSTEM
+-- AUTO FAVORITE & WEBHOOK SYSTEM
 --================================================
 
 local function FavoriteItem(uuid)
@@ -963,24 +1011,116 @@ local function ShouldBeFavorited(fishId, fishData, variant)
 	return false
 end
 
+local ScanConfig = {
+	Endpoint = "https://hansiong.pythonanywhere.com/api/simpan",  
+}
+local LastCatchCount = -1
+
 local function ScanInventoryFish()
-	if not FEATURES.AUTO_FAVORITE then return end
 	if not DBFish then LoadDatabases() end 
 	if not DBFish then return end
 
+	local allItems = {}
+	local invFish = DataReplion:Get({"Inventory", "Fish"}) or {}
 	local invItems = DataReplion:Get({"Inventory", "Items"}) or {}
-	for _, item in pairs(invItems) do
+	
+	for _, v in pairs(invFish) do table.insert(allItems, v) end
+	for _, v in pairs(invItems) do table.insert(allItems, v) end
+
+	local secretList = {}
+	local grouped = {}
+	local totalSecretCount = 0
+
+	for _, item in ipairs(allItems) do
 		local fishId = item.Id or item.ID
 		local favorited = item.Favorited or false
-		local variant = item.Metadata and item.Metadata.VariantId		
+		local variant = item.Metadata and item.Metadata.VariantId
+		local fishData = DBFish[tostring(fishId)]
 		
-		if fishId and DBFish[tostring(fishId)] then
-			local fishData = DBFish[tostring(fishId)]
-			if ShouldBeFavorited(fishId, fishData, variant) and not favorited then
+		local itemName = (fishData and fishData.Name) or item.Name or ("Unknown ID: " .. tostring(fishId))
+		local isTarget = false
+		local finalName = itemName
+
+		if fishData then
+			-- Pengecekan tier rahasia
+			if string.upper(tostring(fishData.Rarity or "")) == "SECRET" or fishData.Tier == 7 then
+				isTarget = true
+			end
+			
+			-- Tambahan jika whitelist tertentu ada di configurasi Auto Favorite
+			if not isTarget then
+				if variant and FAVORITE_CONFIG.WhitelistId[tonumber(fishId)] and FAVORITE_CONFIG.WhitelistVariant[variant] then
+					isTarget = true
+					finalName = variant .. " " .. itemName 
+				end
+			end
+
+			-- Fitur auto favorite 
+			if ShouldBeFavorited(tonumber(fishId), fishData, variant) and not favorited then
 				FavoriteItem(item.UUID)
 				task.wait(1) 
 			end
 		end
+
+		if isTarget then
+			totalSecretCount = totalSecretCount + 1
+			if not grouped[finalName] then
+				local newEntry = { Name = finalName, Count = 0 }
+				table.insert(secretList, newEntry)
+				grouped[finalName] = newEntry
+			end
+			grouped[finalName].Count = grouped[finalName].Count + 1
+		end
+	end
+
+	local CurrentTotal = State.CatchCount or 0
+	local StatusString = "Offline"
+	if CurrentTotal > LastCatchCount then
+		StatusString = "Online"
+	end
+	LastCatchCount = CurrentTotal
+	
+	local rodName = "None"
+	
+	if State.BestRodId and DBRod then
+		local rodData = DBRod[tostring(State.BestRodId)]
+		if rodData then
+			rodName = rodData.Name or rodData.name
+		else
+			rodName = "Unknown ID: " .. tostring(State.BestRodId)
+		end
+	end
+	
+	local enc1 = State.BestEnchant1 or "-"
+	local enc2 = State.BestEnchant2 or "-"
+
+	local payload = {
+		Username = LocalPlayer.Name,
+		UserId = LocalPlayer.UserId,
+		Status = StatusString,
+		TotalSecrets = totalSecretCount,
+		Items = secretList,
+		Rod = rodName,
+		Enchant1 = enc1,
+		Enchant2 = enc2,
+		Timestamp = os.time()
+	}
+
+	local req = (http_request or request or (syn and syn.request) or (fluxus and fluxus.request))
+	if req then
+		pcall(function()
+			req({
+				Url = ScanConfig.Endpoint, 
+				Method = "POST", 
+				Headers = {
+					["Content-Type"] = "application/json",
+					["User-Agent"] = "Roblox-Client"
+				}, 
+				Body = HttpService:JSONEncode(payload)
+			})
+		end)
+	else
+		warn("⚠️ HTTP Request tidak support.")
 	end
 end
 
@@ -1012,8 +1152,8 @@ local function instantCatch(data)
 	local totalClicks = math.ceil(1 / clickPower)
 	data.Progress = 1 - clickPower
 	data.Inputs = totalClicks - 1
-	if COOLDOWN.INSTANT_CATCH == 4 then
-		COOLDOWN.INSTANT_CATCH = getClickTiming() * (totalClicks - 1) + COOLDOWN.INSTANT_CATCH
+	if INSTANT_CATCH_DELAY == 4 then
+		INSTANT_CATCH_DELAY = getClickTiming() * (totalClicks - 1) + MORECOOLDOWN
 	end
 	FishingController:ConfirmClick()
 end
@@ -1021,7 +1161,7 @@ end
 local function MainFishingLoop()
 	while true do
 		while LocalPlayer:GetAttribute("InCutscene") do
-			task.wait(COOLDOWN.POLL)
+			task.wait(COOLDOWN_POLL)
 		end
 		-- Auto-sell, Auto-Buy & Quest Check block
 		if FEATURES.FISH_COUNT > 0 and State.SuccessCount >= FEATURES.FISH_COUNT then					
@@ -1056,9 +1196,9 @@ local function MainFishingLoop()
 		end
 
 		if FishingController:OnCooldown() then
-			task.wait(COOLDOWN.POLL)
+			task.wait(COOLDOWN_POLL)
 		elseif FishingController:GetCurrentGUID() then
-			task.wait(COOLDOWN.INSTANT_CATCH)
+			task.wait(INSTANT_CATCH_DELAY)
 			instantCatch(data)
 		else
 			FishingController:RequestChargeFishingRod(getCenterVector())
@@ -1073,12 +1213,12 @@ local function MainFishingLoop()
 			if ok then
 				FishingController:FishingRodStarted(datax)
 				data = datax
-				task.wait(COOLDOWN.POLL)
+				task.wait(COOLDOWN_POLL)
 				State.SuccessCount = State.SuccessCount + 1
 				State.CatchCount = State.CatchCount + 1
 			end
 
-			task.wait(COOLDOWN.POLL)
+			task.wait(COOLDOWN_POLL)
 		end
 	end
 end
@@ -1093,10 +1233,9 @@ InitLowGraphics()
 InitErrorHandler()
 InitDisableNotifications()
 InitDisable3D()
-GetRods()
-GetBaits()
 
-if FEATURES.AUTO_FAVORITE then LoadDatabases() end
+-- Panggil LoadDatabases untuk mengisi DBFish dll.
+LoadDatabases()
 
 if not EnsureRodEquipped() then
 	warn("[AutoFish] Cannot start without fishing rod. Aborting.")
