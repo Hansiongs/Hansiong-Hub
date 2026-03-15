@@ -238,6 +238,13 @@ local function StartAutoTrade()
                 {name = "🎯 Target", value = TradeConfig.TargetUsername, inline = true}
             }
         )
+        if writefile then
+        pcall(function() 
+            if isfolder and not isfolder("Workspace") and makefolder then
+                makefolder("Workspace")
+            end
+            writefile("trade_done.txt", "selesai") 
+        end)
         return
     end
 
