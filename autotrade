@@ -239,12 +239,13 @@ local function StartAutoTrade()
             }
         )
         if writefile then
-        pcall(function() 
-            if isfolder and not isfolder("Workspace") and makefolder then
-                makefolder("Workspace")
-            end
-            writefile("trade_done.txt", "selesai") 
-        end)
+            pcall(function() 
+                if isfolder and not isfolder("Workspace") and makefolder then
+                    makefolder("Workspace")
+                end
+                writefile("trade_done.txt", "selesai") 
+            end)
+        end
         return
     end
 
